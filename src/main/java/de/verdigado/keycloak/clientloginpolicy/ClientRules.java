@@ -12,7 +12,7 @@ final class ClientRules {
               "default": [{ "deny": { "attribute": "guest", "value": "TRUE" } }],
               "clients": {
                 "restricted-app": [
-                  { "allow": { "role": "staff" } },
+                  { "allow": { "realmRole": "staff" } },
                   { "allow": { "group": "/board" } }
                 ]
               }

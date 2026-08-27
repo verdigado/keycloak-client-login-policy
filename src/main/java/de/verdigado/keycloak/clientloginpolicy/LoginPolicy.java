@@ -19,7 +19,7 @@ final class LoginPolicy {
         return switch (UserOverride.of(subject, clientId)) {
             case DENY -> Decision.deny("the user's " + UserOverride.DENY_ATTRIBUTE + " lists this client");
             case ALLOW -> Decision.allow("the user's " + UserOverride.ALLOW_ATTRIBUTE + " lists this client");
-            case NONE -> decide(policy.forClient(clientId), subject);
+            case NONE -> decide(policy.forClient(clientId), subject, clientId);
         };
     }
 
@@ -28,11 +28,11 @@ final class LoginPolicy {
      * rules admits only users matching one of them; a client that lists none
      * admits everyone.
      */
-    static Decision decide(List<Rule> rules, Subject subject) {
+    static Decision decide(List<Rule> rules, Subject subject, String clientId) {
         List<Rule> allowRules = rules.stream().filter(rule -> rule.effect() == Rule.Effect.ALLOW).toList();
 
         for (Rule rule : rules) {
-            if (rule.effect() == Rule.Effect.DENY && rule.condition().matches(subject)) {
+            if (rule.effect() == Rule.Effect.DENY && rule.condition().matches(subject, clientId)) {
                 return Decision.deny(rule.describe());
             }
         }
@@ -42,7 +42,7 @@ final class LoginPolicy {
         }
 
         return allowRules.stream()
-                .filter(rule -> rule.condition().matches(subject))
+                .filter(rule -> rule.condition().matches(subject, clientId))
                 .findFirst()
                 .map(rule -> Decision.allow(rule.describe()))
                 .orElseGet(() -> Decision.deny("no allow rule matches the user"));

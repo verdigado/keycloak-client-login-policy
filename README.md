@@ -8,9 +8,10 @@ Each client is held to a list of rules:
 - Otherwise, a client with `allow` rules admits only users matching one of them.
 - A client with no rules admits everyone, and so does a client with no policy of its own — those fall back to the default policy.
 
-A condition names one of three things:
+A condition names one of these:
 
-- `{"role": "staff"}` for a realm role, `{"role": "access", "client": "intranet"}` for a client role, held on that client whichever client is being logged into — roles inherited through a group or a composite count
+- `{"realmRole": "staff"}` for a realm role
+- `{"clientRole": "access"}` for a client role on the client being logged into, or `{"clientRole": "access", "client": "intranet"}` for one on a named client — roles inherited through a group or a composite count either way
 - `{"group": "/board"}`, which also covers everything nested under it
 - `{"attribute": "department", "value": "finance"}`, or `{"attribute": "department"}` for any value at all — values are compared exactly, and one matching value is enough for a multi-valued attribute
 
@@ -19,7 +20,7 @@ Names and values are separate fields, so a group path or an attribute value may 
 Adding `"match": "regex"` compares by regular expression instead of literally — against the role name, the group path or the attribute value, and the whole of it has to match:
 
 ```json
-{ "allow": { "role": "^tenant-[0-9]+-staff$", "match": "regex" } }
+{ "allow": { "realmRole": "^tenant-[0-9]+-staff$", "match": "regex" } }
 { "allow": { "group": "^/tenants/[^/]+/staff$", "match": "regex" } }
 ```
 
@@ -48,8 +49,9 @@ The policy is written as a JSON document:
   "default": [{ "deny": { "group": "/blocked" } }],
   "clients": {
     "restricted-app": [
-      { "allow": { "role": "staff" } },
-      { "allow": { "role": "access", "client": "intranet" } },
+      { "allow": { "realmRole": "staff" } },
+      { "allow": { "clientRole": "access" } },
+      { "allow": { "clientRole": "access", "client": "intranet" } },
       { "allow": { "group": "/board" } },
       { "allow": { "attribute": "department", "value": "finance" } }
     ],

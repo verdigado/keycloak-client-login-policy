@@ -15,7 +15,7 @@ class PolicyJsonTest {
               "version": 1,
               "default": [{ "deny": { "group": "/blocked" } }],
               "clients": {
-                "restricted-app": [{ "allow": { "role": "staff" } }, { "allow": { "group": "/board" } }],
+                "restricted-app": [{ "allow": { "realmRole": "staff" } }, { "allow": { "group": "/board" } }],
                 "open-app": []
               }
             }
@@ -67,7 +67,7 @@ class PolicyJsonTest {
     @Test
     void exemptionWinsOverAClientsOwnRules() {
         Policy policy = PolicyJson.parse("""
-                { "exempt": ["reporting"], "clients": { "reporting": [{ "allow": { "role": "staff" } }] } }
+                { "exempt": ["reporting"], "clients": { "reporting": [{ "allow": { "realmRole": "staff" } }] } }
                 """);
 
         assertTrue(policy.forClient("reporting").isEmpty());
@@ -99,9 +99,9 @@ class PolicyJsonTest {
         assertThrows(IllegalArgumentException.class, () -> PolicyJson.parse("not json at all"));
         assertThrows(IllegalArgumentException.class, () -> PolicyJson.parse("{ \"clients\": [1, 2] }"));
         assertThrows(IllegalArgumentException.class,
-                () -> PolicyJson.parse("{ \"clients\": { \"app\": [{ \"maybe\": { \"role\": \"staff\" } }] } }"));
+                () -> PolicyJson.parse("{ \"clients\": { \"app\": [{ \"maybe\": { \"realmRole\": \"staff\" } }] } }"));
         assertThrows(IllegalArgumentException.class,
-                () -> PolicyJson.parse("{ \"clients\": { \"app\": [{ \"allow\": { \"role\": \"a\" }, \"deny\": { \"role\": \"b\" } }] } }"));
+                () -> PolicyJson.parse("{ \"clients\": { \"app\": [{ \"allow\": { \"realmRole\": \"a\" }, \"deny\": { \"realmRole\": \"b\" } }] } }"));
         assertThrows(IllegalArgumentException.class,
                 () -> PolicyJson.parse("{ \"clients\": { \"app\": [{ \"allow\": \"staff\" }] } }"));
         assertThrows(IllegalArgumentException.class,

@@ -105,9 +105,9 @@ class LoginPolicyTest {
         List<Rule> rules = List.of(Rule.allow(Condition.realmRole("staff")), Rule.deny(Condition.group("/board")));
         Subject staffOnTheBoard = new FakeSubject(Set.of("staff"), Set.of("/board"));
 
-        assertEquals("deny group /board", LoginPolicy.decide(rules, staffOnTheBoard).reason());
-        assertEquals("allow realm role staff", LoginPolicy.decide(rules, STAFF).reason());
-        assertEquals("no allow rule matches the user", LoginPolicy.decide(rules, NOBODY).reason());
+        assertEquals("deny group /board", LoginPolicy.decide(rules, staffOnTheBoard, "some-app").reason());
+        assertEquals("allow realm role staff", LoginPolicy.decide(rules, STAFF, "some-app").reason());
+        assertEquals("no allow rule matches the user", LoginPolicy.decide(rules, NOBODY, "some-app").reason());
     }
 
     @Test
@@ -121,24 +121,24 @@ class LoginPolicyTest {
 
     @Test
     void letsEveryoneInWhenThereAreNoRules() {
-        assertTrue(LoginPolicy.decide(List.of(), NOBODY).allowed());
+        assertTrue(LoginPolicy.decide(List.of(), NOBODY, "some-app").allowed());
     }
 
     @Test
     void admitsOnlyUsersMatchingAnAllowRule() {
         List<Rule> rules = List.of(Rule.allow(Condition.realmRole("staff")));
 
-        assertTrue(LoginPolicy.decide(rules, STAFF).allowed());
-        assertFalse(LoginPolicy.decide(rules, NOBODY).allowed());
+        assertTrue(LoginPolicy.decide(rules, STAFF, "some-app").allowed());
+        assertFalse(LoginPolicy.decide(rules, NOBODY, "some-app").allowed());
     }
 
     @Test
     void takesAnyOneOfSeveralAllowRules() {
         List<Rule> rules = List.of(Rule.allow(Condition.realmRole("staff")), Rule.allow(Condition.group("/board")));
 
-        assertTrue(LoginPolicy.decide(rules, STAFF).allowed());
-        assertTrue(LoginPolicy.decide(rules, CHAIR).allowed());
-        assertFalse(LoginPolicy.decide(rules, NOBODY).allowed());
+        assertTrue(LoginPolicy.decide(rules, STAFF, "some-app").allowed());
+        assertTrue(LoginPolicy.decide(rules, CHAIR, "some-app").allowed());
+        assertFalse(LoginPolicy.decide(rules, NOBODY, "some-app").allowed());
     }
 
     @Test
@@ -147,17 +147,17 @@ class LoginPolicyTest {
         Subject finance = new FakeSubject(Set.of(), Set.of(), Map.of("department", "finance"));
         Subject sales = new FakeSubject(Set.of(), Set.of(), Map.of("department", "sales"));
 
-        assertTrue(LoginPolicy.decide(rules, finance).allowed());
-        assertFalse(LoginPolicy.decide(rules, sales).allowed());
-        assertFalse(LoginPolicy.decide(rules, NOBODY).allowed());
+        assertTrue(LoginPolicy.decide(rules, finance, "some-app").allowed());
+        assertFalse(LoginPolicy.decide(rules, sales, "some-app").allowed());
+        assertFalse(LoginPolicy.decide(rules, NOBODY, "some-app").allowed());
     }
 
     @Test
     void takesAnAttributeSetToAnything() {
         List<Rule> rules = List.of(Rule.allow(Condition.attribute("department", null)));
 
-        assertTrue(LoginPolicy.decide(rules, new FakeSubject(Set.of(), Set.of(), Map.of("department", "sales"))).allowed());
-        assertFalse(LoginPolicy.decide(rules, NOBODY).allowed());
+        assertTrue(LoginPolicy.decide(rules, new FakeSubject(Set.of(), Set.of(), Map.of("department", "sales")), "some-app").allowed());
+        assertFalse(LoginPolicy.decide(rules, NOBODY, "some-app").allowed());
     }
 
     @Test
@@ -165,15 +165,15 @@ class LoginPolicyTest {
         List<Rule> rules = List.of(Rule.allow(Condition.realmRole("staff")), Rule.deny(Condition.group("/board")));
         Subject staffOnTheBoard = new FakeSubject(Set.of("staff"), Set.of("/board"));
 
-        assertFalse(LoginPolicy.decide(rules, staffOnTheBoard).allowed());
-        assertTrue(LoginPolicy.decide(rules, STAFF).allowed());
+        assertFalse(LoginPolicy.decide(rules, staffOnTheBoard, "some-app").allowed());
+        assertTrue(LoginPolicy.decide(rules, STAFF, "some-app").allowed());
     }
 
     @Test
     void denyRulesAloneKeepTheClientOpenToEveryoneElse() {
         List<Rule> rules = List.of(Rule.deny(Condition.realmRole("staff")));
 
-        assertFalse(LoginPolicy.decide(rules, STAFF).allowed());
-        assertTrue(LoginPolicy.decide(rules, NOBODY).allowed());
+        assertFalse(LoginPolicy.decide(rules, STAFF, "some-app").allowed());
+        assertTrue(LoginPolicy.decide(rules, NOBODY, "some-app").allowed());
     }
 }
