@@ -1,0 +1,10 @@
+target/
+
+.keycloak-src/
+
+dev/providers/*
+!dev/providers/.gitkeep
+
+.idea/
+*.iml
+.vscode/
