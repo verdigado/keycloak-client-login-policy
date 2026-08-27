@@ -1,11 +1,14 @@
 package de.verdigado.keycloak.clientloginpolicy;
 
+import java.util.stream.Stream;
+
 import org.jboss.logging.Logger;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.RoleModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.utils.KeycloakModelUtils;
+import org.keycloak.models.utils.RoleUtils;
 
 class KeycloakSubject implements Subject {
 
@@ -31,17 +34,33 @@ class KeycloakSubject implements Subject {
     }
 
     @Override
-    public boolean inGroup(String path) {
-        String nested = path + "/";
-        return user.getGroupsStream()
-                .map(KeycloakModelUtils::buildGroupPath)
-                .anyMatch(groupPath -> groupPath.equals(path) || groupPath.startsWith(nested));
+    public Stream<String> realmRoleNames() {
+        return heldRoles()
+                .filter(RoleUtils::isRealmRole)
+                .map(RoleModel::getName);
     }
 
     @Override
-    public boolean hasAttribute(String name, String value) {
-        return user.getAttributeStream(name)
-                .anyMatch(held -> value == null ? !held.isEmpty() : held.equals(value));
+    public Stream<String> clientRoleNames(String clientId) {
+        return heldRoles()
+                .filter(role -> role.getContainer() instanceof ClientModel client
+                        && client.getClientId().equals(clientId))
+                .map(RoleModel::getName);
+    }
+
+    @Override
+    public Stream<String> groupPaths() {
+        return user.getGroupsStream().map(KeycloakModelUtils::buildGroupPath);
+    }
+
+    @Override
+    public Stream<String> attributeValues(String name) {
+        return user.getAttributeStream(name);
+    }
+
+    /** Everything the user holds, through groups and composites alike. */
+    private Stream<RoleModel> heldRoles() {
+        return RoleUtils.getDeepUserRoleMappings(user).stream();
     }
 
     private boolean holds(RoleModel role, String what) {

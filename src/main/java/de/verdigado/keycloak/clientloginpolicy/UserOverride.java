@@ -14,12 +14,16 @@ enum UserOverride {
     static final String DENY_ATTRIBUTE = "client-login-policy.deny";
 
     static UserOverride of(Subject subject, String clientId) {
-        if (subject.hasAttribute(DENY_ATTRIBUTE, clientId)) {
+        if (lists(subject, DENY_ATTRIBUTE, clientId)) {
             return DENY;
         }
-        if (subject.hasAttribute(ALLOW_ATTRIBUTE, clientId)) {
+        if (lists(subject, ALLOW_ATTRIBUTE, clientId)) {
             return ALLOW;
         }
         return NONE;
+    }
+
+    private static boolean lists(Subject subject, String attribute, String clientId) {
+        return subject.attributeValues(attribute).anyMatch(clientId::equals);
     }
 }

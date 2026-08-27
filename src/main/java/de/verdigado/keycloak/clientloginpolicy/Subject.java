@@ -1,7 +1,11 @@
 package de.verdigado.keycloak.clientloginpolicy;
 
+import java.util.stream.Stream;
+
 /**
- * The user a policy is being decided for, reduced to the questions a policy asks.
+ * The user a policy is being decided for, reduced to what a policy asks about.
+ * The two role questions exist because Keycloak answers them far more cheaply
+ * than it hands over every role the user holds.
  */
 interface Subject {
 
@@ -9,9 +13,11 @@ interface Subject {
 
     boolean hasClientRole(String clientId, String name);
 
-    /** True for the group itself and for anything nested under it. */
-    boolean inGroup(String path);
+    Stream<String> realmRoleNames();
 
-    /** A null {@code value} asks whether the attribute is set at all. */
-    boolean hasAttribute(String name, String value);
+    Stream<String> clientRoleNames(String clientId);
+
+    Stream<String> groupPaths();
+
+    Stream<String> attributeValues(String name);
 }

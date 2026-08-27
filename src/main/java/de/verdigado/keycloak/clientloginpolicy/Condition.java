@@ -2,12 +2,16 @@ package de.verdigado.keycloak.clientloginpolicy;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 /**
  * Who a rule applies to. Written as an object so that nothing has to be escaped:
  * {@code {"role": "staff"}}, {@code {"role": "access", "client": "reporting"}},
  * {@code {"group": "/board"}}, {@code {"attribute": "department", "value": "finance"}}
  * or {@code {"attribute": "department"}} for any value at all.
+ *
+ * <p>Adding {@code "match": "regex"} compares by regular expression instead of
+ * literally, against the role name, the group path or the attribute value.
  */
 sealed interface Condition {
 
@@ -16,74 +20,99 @@ sealed interface Condition {
     /** How this condition reads in a log line. */
     String describe();
 
-    record Role(String client, String name) implements Condition {
+    record Role(String client, Match name) implements Condition {
 
         @Override
         public boolean matches(Subject subject) {
-            return client == null ? subject.hasRealmRole(name) : subject.hasClientRole(client, name);
+            if (!name.isRegex()) {
+                return client == null
+                        ? subject.hasRealmRole(name.text())
+                        : subject.hasClientRole(client, name.text());
+            }
+
+            Stream<String> held = client == null ? subject.realmRoleNames() : subject.clientRoleNames(client);
+            return held.anyMatch(name::test);
         }
 
         @Override
         public String describe() {
-            return client == null ? "realm role " + name : "client role " + name + " on " + client;
+            return client == null
+                    ? "realm role " + name.describe()
+                    : "client role " + name.describe() + " on " + client;
         }
     }
 
-    record Group(String path) implements Condition {
+    record Group(Match path) implements Condition {
 
         @Override
         public boolean matches(Subject subject) {
-            return subject.inGroup(path);
+            return subject.groupPaths().anyMatch(this::covers);
+        }
+
+        /** An exact path takes everything nested under it with it. */
+        private boolean covers(String groupPath) {
+            return path.isRegex()
+                    ? path.test(groupPath)
+                    : groupPath.equals(path.text()) || groupPath.startsWith(path.text() + "/");
         }
 
         @Override
         public String describe() {
-            return "group " + path;
+            return "group " + path.describe();
         }
     }
 
-    record Attribute(String name, String value) implements Condition {
+    record Attribute(String name, Match value) implements Condition {
 
         @Override
         public boolean matches(Subject subject) {
-            return subject.hasAttribute(name, value);
+            return subject.attributeValues(name)
+                    .anyMatch(held -> value == null ? !held.isEmpty() : value.test(held));
         }
 
         @Override
         public String describe() {
-            return value == null ? "attribute " + name + " set" : "attribute " + name + "=" + value;
+            return value == null ? "attribute " + name + " set" : "attribute " + name + "=" + value.describe();
         }
     }
 
     static Condition realmRole(String name) {
-        return new Role(null, name);
+        return new Role(null, Match.exact(name));
     }
 
     static Condition clientRole(String client, String name) {
-        return new Role(client, name);
+        return new Role(client, Match.exact(name));
     }
 
     static Condition group(String path) {
-        return new Group(path.startsWith("/") ? path : "/" + path);
+        return new Group(Match.exact(path.startsWith("/") ? path : "/" + path));
     }
 
     static Condition attribute(String name, String value) {
-        return new Attribute(name, value);
+        return new Attribute(name, value == null ? null : Match.exact(value));
     }
 
     static Condition of(Map<String, Object> fields) {
+        String mode = text(fields, "match");
+
         if (fields.containsKey("role")) {
-            return only(fields, "role", Set.of("role", "client"),
-                    new Role(text(fields, "client"), required(fields, "role")));
+            return only(fields, "role", Set.of("role", "client", "match"),
+                    new Role(text(fields, "client"), Match.of(required(fields, "role"), mode)));
         }
         if (fields.containsKey("group")) {
-            return only(fields, "group", Set.of("group"), group(required(fields, "group")));
+            return only(fields, "group", Set.of("group", "match"), group(required(fields, "group"), mode));
         }
         if (fields.containsKey("attribute")) {
-            return only(fields, "attribute", Set.of("attribute", "value"),
-                    new Attribute(required(fields, "attribute"), text(fields, "value")));
+            String value = text(fields, "value");
+            return only(fields, "attribute", Set.of("attribute", "value", "match"),
+                    new Attribute(required(fields, "attribute"), value == null ? null : Match.of(value, mode)));
         }
         throw new IllegalArgumentException("a condition names a role, a group or an attribute, got " + fields.keySet());
+    }
+
+    private static Condition group(String path, String mode) {
+        Match match = Match.of(path, mode);
+        return match.isRegex() ? new Group(match) : group(path);
     }
 
     /** So that a stray or contradictory key is reported rather than ignored. */

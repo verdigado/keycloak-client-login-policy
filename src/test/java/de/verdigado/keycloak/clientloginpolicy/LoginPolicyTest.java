@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 
@@ -30,14 +31,26 @@ class LoginPolicyTest {
         }
 
         @Override
-        public boolean inGroup(String path) {
-            return groups.stream().anyMatch(g -> g.equals(path) || g.startsWith(path + "/"));
+        public Stream<String> realmRoleNames() {
+            return roles.stream().filter(role -> !role.contains("/"));
         }
 
         @Override
-        public boolean hasAttribute(String name, String value) {
+        public Stream<String> clientRoleNames(String clientId) {
+            return roles.stream()
+                    .filter(role -> role.startsWith(clientId + "/"))
+                    .map(role -> role.substring(clientId.length() + 1));
+        }
+
+        @Override
+        public Stream<String> groupPaths() {
+            return groups.stream();
+        }
+
+        @Override
+        public Stream<String> attributeValues(String name) {
             String held = attributes.get(name);
-            return held != null && (value == null || held.equals(value));
+            return held == null ? Stream.empty() : Stream.of(held);
         }
     }
 

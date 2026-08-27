@@ -10,11 +10,20 @@ Each client is held to a list of rules:
 
 A condition names one of three things:
 
-- `{"role": "staff"}` for a realm role, `{"role": "access", "client": "reporting"}` for a client role — roles inherited through a group or a composite count
+- `{"role": "staff"}` for a realm role, `{"role": "access", "client": "intranet"}` for a client role, held on that client whichever client is being logged into — roles inherited through a group or a composite count
 - `{"group": "/board"}`, which also covers everything nested under it
 - `{"attribute": "department", "value": "finance"}`, or `{"attribute": "department"}` for any value at all — values are compared exactly, and one matching value is enough for a multi-valued attribute
 
 Names and values are separate fields, so a group path or an attribute value may contain whatever characters it likes.
+
+Adding `"match": "regex"` compares by regular expression instead of literally — against the role name, the group path or the attribute value, and the whole of it has to match:
+
+```json
+{ "allow": { "role": "^tenant-[0-9]+-staff$", "match": "regex" } }
+{ "allow": { "group": "^/tenants/[^/]+/staff$", "match": "regex" } }
+```
+
+A pattern that does not compile is refused when the policy is read, not when someone logs in. Two things to keep in mind: a regex on a group path matches that path only, where a literal path also covers everything nested under it; and a regex on roles has to expand every role the user holds, where a literal name is a single cheap lookup.
 
 Attributes only work if the realm lets the provider read them: declare the attribute in the realm's user profile, or set unmanaged attributes to enabled. Keycloak silently drops undeclared attributes otherwise, and a rule naming one will never match.
 
@@ -40,7 +49,7 @@ The policy is written as a JSON document:
   "clients": {
     "restricted-app": [
       { "allow": { "role": "staff" } },
-      { "allow": { "role": "access", "client": "reporting" } },
+      { "allow": { "role": "access", "client": "intranet" } },
       { "allow": { "group": "/board" } },
       { "allow": { "attribute": "department", "value": "finance" } }
     ],
