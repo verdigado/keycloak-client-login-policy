@@ -8,11 +8,13 @@ Each client is held to a list of rules:
 - Otherwise, a client with `allow` rules admits only users matching one of them.
 - A client with no rules admits everyone, and so does a client with no policy of its own — those fall back to the default policy.
 
-A rule matches one of three things:
+A condition names one of three things:
 
-- a role, realm-wide (`role:staff`) or on a client (`role:restricted-app/access`) — roles inherited through a group or a composite count
-- a group by path (`group:/board`), which also covers everything nested under it
-- a user attribute, either set to a given value (`attribute:department=finance`) or set at all (`attribute:department`) — values are compared exactly, and one matching value is enough for a multi-valued attribute
+- `{"role": "staff"}` for a realm role, `{"role": "access", "client": "reporting"}` for a client role — roles inherited through a group or a composite count
+- `{"group": "/board"}`, which also covers everything nested under it
+- `{"attribute": "department", "value": "finance"}`, or `{"attribute": "department"}` for any value at all — values are compared exactly, and one matching value is enough for a multi-valued attribute
+
+Names and values are separate fields, so a group path or an attribute value may contain whatever characters it likes.
 
 Attributes only work if the realm lets the provider read them: declare the attribute in the realm's user profile, or set unmanaged attributes to enabled. Keycloak silently drops undeclared attributes otherwise, and a rule naming one will never match.
 
@@ -34,12 +36,13 @@ The policy is written as a JSON document:
 {
   "version": 1,
   "exempt": ["reporting"],
-  "default": [{ "deny": "group:/blocked" }],
+  "default": [{ "deny": { "group": "/blocked" } }],
   "clients": {
     "restricted-app": [
-      { "allow": "role:staff" },
-      { "allow": "group:/board" },
-      { "allow": "attribute:department=finance" }
+      { "allow": { "role": "staff" } },
+      { "allow": { "role": "access", "client": "reporting" } },
+      { "allow": { "group": "/board" } },
+      { "allow": { "attribute": "department", "value": "finance" } }
     ],
     "open-app": []
   }

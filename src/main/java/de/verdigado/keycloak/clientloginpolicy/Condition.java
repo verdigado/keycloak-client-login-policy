@@ -1,52 +1,104 @@
 package de.verdigado.keycloak.clientloginpolicy;
 
+import java.util.Map;
+
 /**
- * Who a rule applies to: {@code role:<name>}, {@code role:<clientId>/<name>},
- * {@code group:/path}, {@code attribute:<name>} or {@code attribute:<name>=<value>}.
+ * Who a rule applies to. Written as an object so that nothing has to be escaped:
+ * {@code {"role": "staff"}}, {@code {"role": "access", "client": "reporting"}},
+ * {@code {"group": "/board"}}, {@code {"attribute": "department", "value": "finance"}}
+ * or {@code {"attribute": "department"}} for any value at all.
  */
-record Condition(Kind kind, String value, String expected) {
+sealed interface Condition {
 
-    enum Kind {
-        ROLE,
-        GROUP,
-        ATTRIBUTE
+    boolean matches(Subject subject);
+
+    /** How this condition reads in a log line. */
+    String describe();
+
+    record Role(String client, String name) implements Condition {
+
+        @Override
+        public boolean matches(Subject subject) {
+            return client == null ? subject.hasRealmRole(name) : subject.hasClientRole(client, name);
+        }
+
+        @Override
+        public String describe() {
+            return client == null ? "realm role " + name : "client role " + name + " on " + client;
+        }
     }
 
-    String describe() {
-        String prefix = kind().name().toLowerCase() + ":" + value();
-        return expected() == null ? prefix : prefix + "=" + expected();
+    record Group(String path) implements Condition {
+
+        @Override
+        public boolean matches(Subject subject) {
+            return subject.inGroup(path);
+        }
+
+        @Override
+        public String describe() {
+            return "group " + path;
+        }
     }
 
-    static Condition parse(String text) {
-        int colon = text.indexOf(':');
-        if (colon < 0) {
-            throw new IllegalArgumentException("condition must read kind:value, got '" + text + "'");
+    record Attribute(String name, String value) implements Condition {
+
+        @Override
+        public boolean matches(Subject subject) {
+            return subject.hasAttribute(name, value);
         }
 
-        String kind = text.substring(0, colon).trim();
-        String value = text.substring(colon + 1).trim();
-        if (value.isEmpty()) {
-            throw new IllegalArgumentException("condition has no value: '" + text + "'");
+        @Override
+        public String describe() {
+            return value == null ? "attribute " + name + " set" : "attribute " + name + "=" + value;
         }
-
-        return switch (kind) {
-            case "role" -> new Condition(Kind.ROLE, value, null);
-            case "group" -> new Condition(Kind.GROUP, value.startsWith("/") ? value : "/" + value, null);
-            case "attribute" -> attribute(value);
-            default -> throw new IllegalArgumentException("unknown condition kind '" + kind + "'");
-        };
     }
 
-    private static Condition attribute(String value) {
-        int equals = value.indexOf('=');
-        if (equals < 0) {
-            return new Condition(Kind.ATTRIBUTE, value, null);
-        }
+    static Condition realmRole(String name) {
+        return new Role(null, name);
+    }
 
-        String name = value.substring(0, equals).trim();
-        if (name.isEmpty()) {
-            throw new IllegalArgumentException("attribute condition has no name: '" + value + "'");
+    static Condition clientRole(String client, String name) {
+        return new Role(client, name);
+    }
+
+    static Condition group(String path) {
+        return new Group(path.startsWith("/") ? path : "/" + path);
+    }
+
+    static Condition attribute(String name, String value) {
+        return new Attribute(name, value);
+    }
+
+    static Condition of(Map<String, Object> fields) {
+        if (fields.containsKey("role")) {
+            return new Role(text(fields, "client"), required(fields, "role"));
         }
-        return new Condition(Kind.ATTRIBUTE, name, value.substring(equals + 1).trim());
+        if (fields.containsKey("group")) {
+            return group(required(fields, "group"));
+        }
+        if (fields.containsKey("attribute")) {
+            return new Attribute(required(fields, "attribute"), text(fields, "value"));
+        }
+        throw new IllegalArgumentException("a condition names a role, a group or an attribute, got " + fields.keySet());
+    }
+
+    private static String required(Map<String, Object> fields, String key) {
+        String value = text(fields, key);
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(key + " has no value");
+        }
+        return value;
+    }
+
+    private static String text(Map<String, Object> fields, String key) {
+        Object value = fields.get(key);
+        if (value == null) {
+            return null;
+        }
+        if (!(value instanceof String string)) {
+            throw new IllegalArgumentException(key + " must be text, got " + value);
+        }
+        return string;
     }
 }

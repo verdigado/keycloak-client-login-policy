@@ -20,15 +20,14 @@ class KeycloakSubject implements Subject {
     }
 
     @Override
-    public boolean hasRole(String name) {
-        RoleModel role = resolve(name);
-        if (role == null) {
-            // A rule naming a role nobody can hold is one we cannot honour.
-            log.warnf("realm %s has no role '%s'", realm.getName(), name);
-            return false;
-        }
-        // Covers roles held through a group and through a composite.
-        return user.hasRole(role);
+    public boolean hasRealmRole(String name) {
+        return holds(realm.getRole(name), "realm role " + name);
+    }
+
+    @Override
+    public boolean hasClientRole(String clientId, String name) {
+        ClientModel client = realm.getClientByClientId(clientId);
+        return holds(client == null ? null : client.getRole(name), "role " + name + " on client " + clientId);
     }
 
     @Override
@@ -45,13 +44,13 @@ class KeycloakSubject implements Subject {
                 .anyMatch(held -> value == null ? !held.isEmpty() : held.equals(value));
     }
 
-    private RoleModel resolve(String name) {
-        int slash = name.indexOf('/');
-        if (slash < 0) {
-            return realm.getRole(name);
+    private boolean holds(RoleModel role, String what) {
+        if (role == null) {
+            // A rule naming a role nobody can hold is one we cannot honour.
+            log.warnf("realm %s has no %s", realm.getName(), what);
+            return false;
         }
-
-        ClientModel client = realm.getClientByClientId(name.substring(0, slash));
-        return client == null ? null : client.getRole(name.substring(slash + 1));
+        // Covers roles held through a group and through a composite.
+        return user.hasRole(role);
     }
 }

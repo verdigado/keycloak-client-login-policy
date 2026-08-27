@@ -32,7 +32,7 @@ final class LoginPolicy {
         List<Rule> allowRules = rules.stream().filter(rule -> rule.effect() == Rule.Effect.ALLOW).toList();
 
         for (Rule rule : rules) {
-            if (rule.effect() == Rule.Effect.DENY && matches(rule.condition(), subject)) {
+            if (rule.effect() == Rule.Effect.DENY && rule.condition().matches(subject)) {
                 return Decision.deny(rule.describe());
             }
         }
@@ -42,17 +42,9 @@ final class LoginPolicy {
         }
 
         return allowRules.stream()
-                .filter(rule -> matches(rule.condition(), subject))
+                .filter(rule -> rule.condition().matches(subject))
                 .findFirst()
                 .map(rule -> Decision.allow(rule.describe()))
                 .orElseGet(() -> Decision.deny("no allow rule matches the user"));
-    }
-
-    private static boolean matches(Condition condition, Subject subject) {
-        return switch (condition.kind()) {
-            case ROLE -> subject.hasRole(condition.value());
-            case GROUP -> subject.inGroup(condition.value());
-            case ATTRIBUTE -> subject.hasAttribute(condition.value(), condition.expected());
-        };
     }
 }

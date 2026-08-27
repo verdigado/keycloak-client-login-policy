@@ -5,8 +5,9 @@ package de.verdigado.keycloak.clientloginpolicy;
  */
 interface Subject {
 
-    /** {@code name} for a realm role, {@code clientId/name} for a client role. */
-    boolean hasRole(String name);
+    boolean hasRealmRole(String name);
+
+    boolean hasClientRole(String clientId, String name);
 
     /** True for the group itself and for anything nested under it. */
     boolean inGroup(String path);

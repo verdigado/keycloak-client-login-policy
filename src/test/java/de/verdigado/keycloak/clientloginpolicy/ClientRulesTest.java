@@ -16,7 +16,7 @@ class ClientRulesTest {
 
     @Test
     void fallsBackToTheDefaultForEveryoneElse() {
-        assertEquals(List.of(Rule.deny("attribute:guest=TRUE")), ClientRules.policy().forClient("demo-app"));
+        assertEquals(List.of(Rule.deny(Condition.attribute("guest", "TRUE"))), ClientRules.policy().forClient("demo-app"));
     }
 
     @Test

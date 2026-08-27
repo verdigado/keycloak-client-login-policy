@@ -13,9 +13,9 @@ class PolicyJsonTest {
     private static final String DOCUMENT = """
             {
               "version": 1,
-              "default": [{ "deny": "group:/blocked" }],
+              "default": [{ "deny": { "group": "/blocked" } }],
               "clients": {
-                "restricted-app": [{ "allow": "role:staff" }, { "allow": "group:/board" }],
+                "restricted-app": [{ "allow": { "role": "staff" } }, { "allow": { "group": "/board" } }],
                 "open-app": []
               }
             }
@@ -25,7 +25,7 @@ class PolicyJsonTest {
     void readsAClientsRules() {
         Policy policy = PolicyJson.parse(DOCUMENT);
 
-        assertEquals(List.of(Rule.allow("role:staff"), Rule.allow("group:/board")),
+        assertEquals(List.of(Rule.allow(Condition.realmRole("staff")), Rule.allow(Condition.group("/board"))),
                 policy.forClient("restricted-app"));
     }
 
@@ -34,7 +34,7 @@ class PolicyJsonTest {
         Policy policy = PolicyJson.parse(DOCUMENT);
 
         assertTrue(policy.forClient("open-app").isEmpty());
-        assertEquals(List.of(Rule.deny("group:/blocked")), policy.forClient("some-other-app"));
+        assertEquals(List.of(Rule.deny(Condition.group("/blocked"))), policy.forClient("some-other-app"));
     }
 
     @Test
@@ -42,32 +42,32 @@ class PolicyJsonTest {
         Policy policy = PolicyJson.parse(DOCUMENT);
 
         assertTrue(policy.forClient("account-console").isEmpty());
-        assertEquals(List.of(Rule.deny("group:/blocked")), policy.forClient("some-other-app"));
+        assertEquals(List.of(Rule.deny(Condition.group("/blocked"))), policy.forClient("some-other-app"));
     }
 
     @Test
     void takesTheExemptListADocumentGives() {
         Policy policy = PolicyJson.parse("""
-                { "exempt": ["reporting"], "default": [{ "deny": "group:/blocked" }] }
+                { "exempt": ["reporting"], "default": [{ "deny": { "group": "/blocked" } }] }
                 """);
 
         assertTrue(policy.forClient("reporting").isEmpty());
-        assertEquals(List.of(Rule.deny("group:/blocked")), policy.forClient("account-console"));
+        assertEquals(List.of(Rule.deny(Condition.group("/blocked"))), policy.forClient("account-console"));
     }
 
     @Test
     void takesAnEmptyExemptListAsExemptingNothing() {
         Policy policy = PolicyJson.parse("""
-                { "exempt": [], "default": [{ "deny": "group:/blocked" }] }
+                { "exempt": [], "default": [{ "deny": { "group": "/blocked" } }] }
                 """);
 
-        assertEquals(List.of(Rule.deny("group:/blocked")), policy.forClient("account-console"));
+        assertEquals(List.of(Rule.deny(Condition.group("/blocked"))), policy.forClient("account-console"));
     }
 
     @Test
     void exemptionWinsOverAClientsOwnRules() {
         Policy policy = PolicyJson.parse("""
-                { "exempt": ["reporting"], "clients": { "reporting": [{ "allow": "role:staff" }] } }
+                { "exempt": ["reporting"], "clients": { "reporting": [{ "allow": { "role": "staff" } }] } }
                 """);
 
         assertTrue(policy.forClient("reporting").isEmpty());
@@ -94,10 +94,12 @@ class PolicyJsonTest {
         assertThrows(IllegalArgumentException.class, () -> PolicyJson.parse("not json at all"));
         assertThrows(IllegalArgumentException.class, () -> PolicyJson.parse("{ \"clients\": [1, 2] }"));
         assertThrows(IllegalArgumentException.class,
-                () -> PolicyJson.parse("{ \"clients\": { \"app\": [{ \"maybe\": \"role:staff\" }] } }"));
+                () -> PolicyJson.parse("{ \"clients\": { \"app\": [{ \"maybe\": { \"role\": \"staff\" } }] } }"));
         assertThrows(IllegalArgumentException.class,
-                () -> PolicyJson.parse("{ \"clients\": { \"app\": [{ \"allow\": \"a\", \"deny\": \"b\" }] } }"));
+                () -> PolicyJson.parse("{ \"clients\": { \"app\": [{ \"allow\": { \"role\": \"a\" }, \"deny\": { \"role\": \"b\" } }] } }"));
         assertThrows(IllegalArgumentException.class,
                 () -> PolicyJson.parse("{ \"clients\": { \"app\": [{ \"allow\": \"staff\" }] } }"));
+        assertThrows(IllegalArgumentException.class,
+                () -> PolicyJson.parse("{ \"clients\": { \"app\": [{ \"allow\": { \"team\": \"x\" } }] } }"));
     }
 }

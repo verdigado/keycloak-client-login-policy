@@ -20,8 +20,13 @@ class LoginPolicyTest {
         }
 
         @Override
-        public boolean hasRole(String name) {
+        public boolean hasRealmRole(String name) {
             return roles.contains(name);
+        }
+
+        @Override
+        public boolean hasClientRole(String clientId, String name) {
+            return roles.contains(clientId + "/" + name);
         }
 
         @Override
@@ -40,14 +45,14 @@ class LoginPolicyTest {
     private static final Subject NOBODY = new FakeSubject(Set.of(), Set.of());
     private static final Subject CHAIR = new FakeSubject(Set.of(), Set.of("/board/chairs"));
 
-    private static Policy policyDenying(String clientId, String condition) {
+    private static Policy policyDenying(String clientId, Condition condition) {
         return new Policy(Set.of("account-console"), List.of(),
                 Map.of(clientId, List.of(Rule.deny(condition))));
     }
 
     @Test
     void letsAUserOverrideOverruleTheClientsRules() {
-        Policy policy = policyDenying("demo-app", "attribute:guest=TRUE");
+        Policy policy = policyDenying("demo-app", Condition.attribute("guest", "TRUE"));
         Subject guest = new FakeSubject(Set.of(), Set.of(), Map.of("guest", "TRUE"));
         Subject invited = new FakeSubject(Set.of(), Set.of(),
                 Map.of("guest", "TRUE", UserOverride.ALLOW_ATTRIBUTE, "demo-app"));
@@ -76,7 +81,7 @@ class LoginPolicyTest {
 
     @Test
     void leavesAnExemptClientAloneEvenWithAUserDeny() {
-        Policy policy = policyDenying("demo-app", "attribute:guest=TRUE");
+        Policy policy = policyDenying("demo-app", Condition.attribute("guest", "TRUE"));
         Subject barred = new FakeSubject(Set.of(), Set.of(), Map.of(UserOverride.DENY_ATTRIBUTE, "account-console"));
 
         assertTrue(LoginPolicy.decide(policy, barred, "account-console").allowed());
@@ -84,11 +89,11 @@ class LoginPolicyTest {
 
     @Test
     void saysWhichRuleTurnedTheUserAway() {
-        List<Rule> rules = List.of(Rule.allow("role:staff"), Rule.deny("group:/board"));
+        List<Rule> rules = List.of(Rule.allow(Condition.realmRole("staff")), Rule.deny(Condition.group("/board")));
         Subject staffOnTheBoard = new FakeSubject(Set.of("staff"), Set.of("/board"));
 
-        assertEquals("deny group:/board", LoginPolicy.decide(rules, staffOnTheBoard).reason());
-        assertEquals("allow role:staff", LoginPolicy.decide(rules, STAFF).reason());
+        assertEquals("deny group /board", LoginPolicy.decide(rules, staffOnTheBoard).reason());
+        assertEquals("allow realm role staff", LoginPolicy.decide(rules, STAFF).reason());
         assertEquals("no allow rule matches the user", LoginPolicy.decide(rules, NOBODY).reason());
     }
 
@@ -108,7 +113,7 @@ class LoginPolicyTest {
 
     @Test
     void admitsOnlyUsersMatchingAnAllowRule() {
-        List<Rule> rules = List.of(Rule.allow("role:staff"));
+        List<Rule> rules = List.of(Rule.allow(Condition.realmRole("staff")));
 
         assertTrue(LoginPolicy.decide(rules, STAFF).allowed());
         assertFalse(LoginPolicy.decide(rules, NOBODY).allowed());
@@ -116,7 +121,7 @@ class LoginPolicyTest {
 
     @Test
     void takesAnyOneOfSeveralAllowRules() {
-        List<Rule> rules = List.of(Rule.allow("role:staff"), Rule.allow("group:/board"));
+        List<Rule> rules = List.of(Rule.allow(Condition.realmRole("staff")), Rule.allow(Condition.group("/board")));
 
         assertTrue(LoginPolicy.decide(rules, STAFF).allowed());
         assertTrue(LoginPolicy.decide(rules, CHAIR).allowed());
@@ -125,7 +130,7 @@ class LoginPolicyTest {
 
     @Test
     void matchesOnAnAttributeValue() {
-        List<Rule> rules = List.of(Rule.allow("attribute:department=finance"));
+        List<Rule> rules = List.of(Rule.allow(Condition.attribute("department", "finance")));
         Subject finance = new FakeSubject(Set.of(), Set.of(), Map.of("department", "finance"));
         Subject sales = new FakeSubject(Set.of(), Set.of(), Map.of("department", "sales"));
 
@@ -136,7 +141,7 @@ class LoginPolicyTest {
 
     @Test
     void takesAnAttributeSetToAnything() {
-        List<Rule> rules = List.of(Rule.allow("attribute:department"));
+        List<Rule> rules = List.of(Rule.allow(Condition.attribute("department", null)));
 
         assertTrue(LoginPolicy.decide(rules, new FakeSubject(Set.of(), Set.of(), Map.of("department", "sales"))).allowed());
         assertFalse(LoginPolicy.decide(rules, NOBODY).allowed());
@@ -144,7 +149,7 @@ class LoginPolicyTest {
 
     @Test
     void letsADenyRuleOverruleAnAllow() {
-        List<Rule> rules = List.of(Rule.allow("role:staff"), Rule.deny("group:/board"));
+        List<Rule> rules = List.of(Rule.allow(Condition.realmRole("staff")), Rule.deny(Condition.group("/board")));
         Subject staffOnTheBoard = new FakeSubject(Set.of("staff"), Set.of("/board"));
 
         assertFalse(LoginPolicy.decide(rules, staffOnTheBoard).allowed());
@@ -153,7 +158,7 @@ class LoginPolicyTest {
 
     @Test
     void denyRulesAloneKeepTheClientOpenToEveryoneElse() {
-        List<Rule> rules = List.of(Rule.deny("role:staff"));
+        List<Rule> rules = List.of(Rule.deny(Condition.realmRole("staff")));
 
         assertFalse(LoginPolicy.decide(rules, STAFF).allowed());
         assertTrue(LoginPolicy.decide(rules, NOBODY).allowed());

@@ -17,9 +17,9 @@ import org.keycloak.util.JsonSerialization;
  * {
  *   "version": 1,
  *   "exempt": ["account-console"],
- *   "default": [{ "deny": "group:/blocked" }],
+ *   "default": [{ "deny": { "group": "/blocked" } }],
  *   "clients": {
- *     "restricted-app": [{ "allow": "role:staff" }, { "allow": "group:/board" }]
+ *     "restricted-app": [{ "allow": { "role": "staff" } }, { "allow": { "group": "/board" } }]
  *   }
  * }
  * </pre>
@@ -115,7 +115,7 @@ final class PolicyJson {
         }
 
         Map.Entry<String, Object> only = fields.entrySet().iterator().next();
-        String condition = String.valueOf(only.getValue());
+        Condition condition = Condition.of(asMap(only.getValue(), where + " condition"));
 
         return switch (only.getKey()) {
             case "allow" -> Rule.allow(condition);
