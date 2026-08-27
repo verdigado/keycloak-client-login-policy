@@ -39,6 +39,48 @@ class LoginPolicyTest {
     private static final Subject NOBODY = new FakeSubject(Set.of(), Set.of());
     private static final Subject CHAIR = new FakeSubject(Set.of(), Set.of("/board/chairs"));
 
+    private static Policy policyDenying(String clientId, String condition) {
+        return new Policy(Set.of("account-console"), List.of(),
+                Map.of(clientId, List.of(Rule.deny(condition))));
+    }
+
+    @Test
+    void letsAUserOverrideOverruleTheClientsRules() {
+        Policy policy = policyDenying("demo-app", "attribute:guest=TRUE");
+        Subject guest = new FakeSubject(Set.of(), Set.of(), Map.of("guest", "TRUE"));
+        Subject invited = new FakeSubject(Set.of(), Set.of(),
+                Map.of("guest", "TRUE", UserOverride.ALLOW_ATTRIBUTE, "demo-app"));
+
+        assertFalse(LoginPolicy.allows(policy, guest, "demo-app"));
+        assertTrue(LoginPolicy.allows(policy, invited, "demo-app"));
+    }
+
+    @Test
+    void keepsAUserOutOfAClientTheirOwnOverrideDenies() {
+        Policy open = new Policy(Set.of(), List.of(), Map.of());
+        Subject barred = new FakeSubject(Set.of(), Set.of(), Map.of(UserOverride.DENY_ATTRIBUTE, "demo-app"));
+
+        assertFalse(LoginPolicy.allows(open, barred, "demo-app"));
+        assertTrue(LoginPolicy.allows(open, barred, "other-app"));
+    }
+
+    @Test
+    void letsADenyOverrideBeatAnAllowOverride() {
+        Policy open = new Policy(Set.of(), List.of(), Map.of());
+        Subject both = new FakeSubject(Set.of(), Set.of(),
+                Map.of(UserOverride.ALLOW_ATTRIBUTE, "demo-app", UserOverride.DENY_ATTRIBUTE, "demo-app"));
+
+        assertFalse(LoginPolicy.allows(open, both, "demo-app"));
+    }
+
+    @Test
+    void leavesAnExemptClientAloneEvenWithAUserDeny() {
+        Policy policy = policyDenying("demo-app", "attribute:guest=TRUE");
+        Subject barred = new FakeSubject(Set.of(), Set.of(), Map.of(UserOverride.DENY_ATTRIBUTE, "account-console"));
+
+        assertTrue(LoginPolicy.allows(policy, barred, "account-console"));
+    }
+
     @Test
     void letsEveryoneInWhenThereAreNoRules() {
         assertTrue(LoginPolicy.allows(List.of(), NOBODY));

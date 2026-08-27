@@ -1,7 +1,5 @@
 package de.verdigado.keycloak.clientloginpolicy;
 
-import java.util.List;
-
 /**
  * The policy in force. Hardcoded for now; this is where a configured document
  * will be read instead.
@@ -25,7 +23,7 @@ final class ClientRules {
     private ClientRules() {
     }
 
-    static List<Rule> forClient(String clientId) {
-        return POLICY.forClient(clientId);
+    static Policy policy() {
+        return POLICY;
     }
 }

@@ -11,16 +11,16 @@ class ClientRulesTest {
 
     @Test
     void holdsARestrictedClientToItsRules() {
-        assertEquals(2, ClientRules.forClient("restricted-app").size());
+        assertEquals(2, ClientRules.policy().forClient("restricted-app").size());
     }
 
     @Test
     void fallsBackToTheDefaultForEveryoneElse() {
-        assertEquals(List.of(Rule.deny("attribute:guest=TRUE")), ClientRules.forClient("demo-app"));
+        assertEquals(List.of(Rule.deny("attribute:guest=TRUE")), ClientRules.policy().forClient("demo-app"));
     }
 
     @Test
     void leavesKeycloaksOwnClientsAlone() {
-        assertTrue(ClientRules.forClient("account-console").isEmpty());
+        assertTrue(ClientRules.policy().forClient("account-console").isEmpty());
     }
 }

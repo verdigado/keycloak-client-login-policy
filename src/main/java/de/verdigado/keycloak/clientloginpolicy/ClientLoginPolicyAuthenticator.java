@@ -1,7 +1,5 @@
 package de.verdigado.keycloak.clientloginpolicy;
 
-import java.util.List;
-
 import jakarta.ws.rs.core.Response;
 
 import org.jboss.logging.Logger;
@@ -21,12 +19,10 @@ public class ClientLoginPolicyAuthenticator implements Authenticator {
     @Override
     public void authenticate(AuthenticationFlowContext context) {
         String clientId = context.getAuthenticationSession().getClient().getClientId();
-        List<Rule> rules = ClientRules.forClient(clientId);
-
         RealmModel realm = context.getRealm();
         UserModel user = context.getUser();
 
-        if (LoginPolicy.allows(rules, new KeycloakSubject(realm, user))) {
+        if (LoginPolicy.allows(ClientRules.policy(), new KeycloakSubject(realm, user), clientId)) {
             context.success();
             return;
         }

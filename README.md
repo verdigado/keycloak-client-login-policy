@@ -16,6 +16,16 @@ A rule matches one of three things:
 
 Attributes only work if the realm lets the provider read them: declare the attribute in the realm's user profile, or set unmanaged attributes to enabled. Keycloak silently drops undeclared attributes otherwise, and a rule naming one will never match.
 
+
+### Per-user exceptions
+
+Two user attributes overrule the policy for one person, without touching the document. Both hold client ids, one value per client:
+
+- `client-login-policy.allow` — this user gets in, whatever the client's rules say
+- `client-login-policy.deny` — this user is turned away, whatever the client's rules say
+
+A deny beats an allow, and both beat the client's rules. Exempt clients are left alone even here, so an override cannot lock someone out of the account console.
+
 Users turned away get an access denied page and the login is recorded as a `not_allowed` event.
 
 The policy is written as a JSON document:

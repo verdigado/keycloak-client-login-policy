@@ -8,6 +8,22 @@ final class LoginPolicy {
     }
 
     /**
+     * An exempt client admits everyone. Otherwise a user's own override settles
+     * it, and only then does the client's policy decide.
+     */
+    static boolean allows(Policy policy, Subject subject, String clientId) {
+        if (policy.exempt().contains(clientId)) {
+            return true;
+        }
+
+        return switch (UserOverride.of(subject, clientId)) {
+            case DENY -> false;
+            case ALLOW -> true;
+            case NONE -> allows(policy.forClient(clientId), subject);
+        };
+    }
+
+    /**
      * A matching deny turns the user away. Otherwise, a client that lists allow
      * rules admits only users matching one of them; a client that lists none
      * admits everyone.
