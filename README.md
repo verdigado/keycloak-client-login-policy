@@ -11,6 +11,8 @@ The Keycloak this is built against lives in `<keycloak.version>` in [pom.xml](po
 
 Maven itself comes from the checked-in wrapper, so it does not need installing.
 
+Optional: `make keycloak-src` clones the Keycloak this builds against into `.keycloak-src/`, so the SPI sources and Keycloak's own providers can be read and searched locally. Nothing in the build or the dev loop needs it.
+
 ## Dev loop
 
 ```sh

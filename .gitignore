@@ -1,5 +1,7 @@
 target/
 
+.keycloak-src/
+
 dev/providers/*
 !dev/providers/.gitkeep
 
