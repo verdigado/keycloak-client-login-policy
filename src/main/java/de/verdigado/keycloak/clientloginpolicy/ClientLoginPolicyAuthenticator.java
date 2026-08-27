@@ -1,11 +1,16 @@
 package de.verdigado.keycloak.clientloginpolicy;
 
+import jakarta.ws.rs.core.Response;
+
 import org.jboss.logging.Logger;
 import org.keycloak.authentication.AuthenticationFlowContext;
+import org.keycloak.authentication.AuthenticationFlowError;
 import org.keycloak.authentication.Authenticator;
+import org.keycloak.events.Errors;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
+import org.keycloak.services.messages.Messages;
 
 public class ClientLoginPolicyAuthenticator implements Authenticator {
 
@@ -13,13 +18,33 @@ public class ClientLoginPolicyAuthenticator implements Authenticator {
 
     @Override
     public void authenticate(AuthenticationFlowContext context) {
-        UserModel user = context.getUser();
         String clientId = context.getAuthenticationSession().getClient().getClientId();
+        RealmModel realm = context.getRealm();
+        UserModel user = context.getUser();
 
-        log.infof("client-login-policy: hello, %s is logging in to %s",
-                user == null ? "an unknown user" : user.getUsername(), clientId);
+        Decision decision = LoginPolicy.decide(policyFor(context), new KeycloakSubject(realm, user), clientId);
 
-        context.success();
+        if (decision.allowed()) {
+            log.debugf("%s may log in to %s: %s", user.getUsername(), clientId, decision.reason());
+            context.success();
+            return;
+        }
+
+        log.infof("%s may not log in to %s: %s", user.getUsername(), clientId, decision.reason());
+        context.getEvent().user(user).error(Errors.NOT_ALLOWED);
+        Response challenge = context.form()
+                .setError(Messages.ACCESS_DENIED)
+                .createErrorPage(Response.Status.FORBIDDEN);
+        context.failure(AuthenticationFlowError.ACCESS_DENIED, challenge);
+    }
+
+    private Policy policyFor(AuthenticationFlowContext context) {
+        try {
+            return ConfiguredPolicy.of(context.getAuthenticatorConfig());
+        } catch (IllegalArgumentException e) {
+            log.errorf("the configured policy cannot be read, turning everyone away: %s", e.getMessage());
+            return Policy.CLOSED;
+        }
     }
 
     @Override

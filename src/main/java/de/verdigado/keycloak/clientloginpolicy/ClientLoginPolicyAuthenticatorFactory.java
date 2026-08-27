@@ -41,7 +41,7 @@ public class ClientLoginPolicyAuthenticatorFactory implements AuthenticatorFacto
 
     @Override
     public boolean isConfigurable() {
-        return false;
+        return true;
     }
 
     @Override
@@ -56,7 +56,19 @@ public class ClientLoginPolicyAuthenticatorFactory implements AuthenticatorFacto
 
     @Override
     public List<ProviderConfigProperty> getConfigProperties() {
-        return List.of();
+        ProviderConfigProperty document = new ProviderConfigProperty();
+        document.setName(ConfiguredPolicy.DOCUMENT);
+        document.setLabel("Policy");
+        document.setType(ProviderConfigProperty.TEXT_TYPE);
+        document.setHelpText("Which users may log in to which client, as a JSON document. "
+                + "Left empty, every client admits everyone.");
+        document.setDefaultValue("""
+                {
+                  "version": 1,
+                  "clients": {}
+                }""");
+
+        return List.of(document);
     }
 
     @Override

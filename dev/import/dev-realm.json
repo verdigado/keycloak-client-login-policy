@@ -122,7 +122,8 @@
           "requirement": "REQUIRED",
           "priority": 20,
           "autheticatorFlow": false,
-          "userSetupAllowed": false
+          "userSetupAllowed": false,
+          "authenticatorConfig": "dev policy"
         }
       ]
     },
@@ -203,5 +204,26 @@
       ]
     }
   ],
-  "browserFlow": "browser with login policy"
+  "browserFlow": "browser with login policy",
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\":[{\"name\":\"username\",\"displayName\":\"${username}\",\"validations\":{\"length\":{\"min\":3,\"max\":255},\"username-prohibited-characters\":{},\"up-username-not-idn-homograph\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"email\",\"displayName\":\"${email}\",\"validations\":{\"email\":{},\"length\":{\"max\":255}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"firstName\",\"displayName\":\"${firstName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"lastName\",\"displayName\":\"${lastName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false}],\"groups\":[{\"name\":\"user-metadata\",\"displayHeader\":\"User metadata\",\"displayDescription\":\"Attributes, which refer to user metadata\"}],\"unmanagedAttributePolicy\":\"ENABLED\"}"
+          ]
+        }
+      }
+    ]
+  },
+  "authenticatorConfig": [
+    {
+      "alias": "dev policy",
+      "config": {
+        "policy": "{\n  \"version\": 1,\n  \"default\": [\n    {\n      \"deny\": {\n        \"attribute\": \"guest\",\n        \"value\": \"TRUE\"\n      }\n    }\n  ],\n  \"clients\": {\n    \"restricted-app\": [\n      {\n        \"allow\": {\n          \"realmRole\": \"staff\"\n        }\n      },\n      {\n        \"allow\": {\n          \"group\": \"/board\"\n        }\n      }\n    ]\n  }\n}"
+      }
+    }
+  ]
 }
