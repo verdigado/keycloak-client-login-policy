@@ -24,6 +24,7 @@
     <maven.compiler.release>17</maven.compiler.release>
     <keycloak.version>26.7.2</keycloak.version>
     <jboss-logging.version>3.5.3.Final</jboss-logging.version>
+    <jakarta.ws.rs.version>3.1.0</jakarta.ws.rs.version>
     <junit.version>5.10.2</junit.version>
     <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
     <maven-jar-plugin.version>3.4.1</maven-jar-plugin.version>
@@ -61,6 +62,12 @@
       <groupId>org.jboss.logging</groupId>
       <artifactId>jboss-logging</artifactId>
       <version>${jboss-logging.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>jakarta.ws.rs</groupId>
+      <artifactId>jakarta.ws.rs-api</artifactId>
+      <version>${jakarta.ws.rs.version}</version>
       <scope>provided</scope>
     </dependency>
 

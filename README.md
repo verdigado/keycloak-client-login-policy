@@ -2,6 +2,8 @@
 
 A Keycloak provider that decides which users may log in to which client, based on user data such as roles and groups.
 
+A client can demand a realm role: users without it are turned away with an access denied page, whether the role comes to them directly, through a group or through a composite. Clients with no rule let everyone in. The rules are still hardcoded — per-client configuration comes next.
+
 ## Setup
 
 Take the jar from the [latest release](https://github.com/verdigado/keycloak-client-login-policy/releases/latest), copy it into the `providers/` directory of your Keycloak and restart it. A jar's filename says which Keycloak version it belongs on.
