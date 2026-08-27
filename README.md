@@ -8,7 +8,13 @@ Each client is held to a list of rules:
 - Otherwise, a client with `allow` rules admits only users matching one of them.
 - A client with no rules admits everyone, and so does a client with no policy of its own — those fall back to the default policy.
 
-A rule matches either a role, realm-wide (`role:staff`) or on a client (`role:restricted-app/access`), or a group by path (`group:/board`), which also covers everything nested under it. Roles inherited through a group or a composite count.
+A rule matches one of three things:
+
+- a role, realm-wide (`role:staff`) or on a client (`role:restricted-app/access`) — roles inherited through a group or a composite count
+- a group by path (`group:/board`), which also covers everything nested under it
+- a user attribute, either set to a given value (`attribute:department=finance`) or set at all (`attribute:department`) — values are compared exactly, and one matching value is enough for a multi-valued attribute
+
+Attributes only work if the realm lets the provider read them: declare the attribute in the realm's user profile, or set unmanaged attributes to enabled. Keycloak silently drops undeclared attributes otherwise, and a rule naming one will never match.
 
 Users turned away get an access denied page and the login is recorded as a `not_allowed` event.
 
@@ -18,7 +24,11 @@ The policy is written as a JSON document:
 {
   "default": [{ "deny": "group:/blocked" }],
   "clients": {
-    "restricted-app": [{ "allow": "role:staff" }, { "allow": "group:/board" }],
+    "restricted-app": [
+      { "allow": "role:staff" },
+      { "allow": "group:/board" },
+      { "allow": "attribute:department=finance" }
+    ],
     "open-app": []
   }
 }

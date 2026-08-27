@@ -39,6 +39,7 @@ final class LoginPolicy {
         return switch (condition.kind()) {
             case ROLE -> subject.hasRole(condition.value());
             case GROUP -> subject.inGroup(condition.value());
+            case ATTRIBUTE -> subject.hasAttribute(condition.value(), condition.expected());
         };
     }
 }

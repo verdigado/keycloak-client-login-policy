@@ -39,6 +39,12 @@ class KeycloakSubject implements Subject {
                 .anyMatch(groupPath -> groupPath.equals(path) || groupPath.startsWith(nested));
     }
 
+    @Override
+    public boolean hasAttribute(String name, String value) {
+        return user.getAttributeStream(name)
+                .anyMatch(held -> value == null ? !held.isEmpty() : held.equals(value));
+    }
+
     private RoleModel resolve(String name) {
         int slash = name.indexOf('/');
         if (slash < 0) {
