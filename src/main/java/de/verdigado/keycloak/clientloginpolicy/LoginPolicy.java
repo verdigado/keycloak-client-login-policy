@@ -11,15 +11,15 @@ final class LoginPolicy {
      * An exempt client admits everyone. Otherwise a user's own override settles
      * it, and only then does the client's policy decide.
      */
-    static boolean allows(Policy policy, Subject subject, String clientId) {
+    static Decision decide(Policy policy, Subject subject, String clientId) {
         if (policy.exempt().contains(clientId)) {
-            return true;
+            return Decision.allow("client is exempt from the policy");
         }
 
         return switch (UserOverride.of(subject, clientId)) {
-            case DENY -> false;
-            case ALLOW -> true;
-            case NONE -> allows(policy.forClient(clientId), subject);
+            case DENY -> Decision.deny("the user's " + UserOverride.DENY_ATTRIBUTE + " lists this client");
+            case ALLOW -> Decision.allow("the user's " + UserOverride.ALLOW_ATTRIBUTE + " lists this client");
+            case NONE -> decide(policy.forClient(clientId), subject);
         };
     }
 
@@ -28,27 +28,24 @@ final class LoginPolicy {
      * rules admits only users matching one of them; a client that lists none
      * admits everyone.
      */
-    static boolean allows(List<Rule> rules, Subject subject) {
-        boolean restricted = false;
+    static Decision decide(List<Rule> rules, Subject subject) {
+        List<Rule> allowRules = rules.stream().filter(rule -> rule.effect() == Rule.Effect.ALLOW).toList();
 
         for (Rule rule : rules) {
-            boolean matches = matches(rule.condition(), subject);
-
-            if (rule.effect() == Rule.Effect.DENY && matches) {
-                return false;
-            }
-            if (rule.effect() == Rule.Effect.ALLOW) {
-                restricted = true;
+            if (rule.effect() == Rule.Effect.DENY && matches(rule.condition(), subject)) {
+                return Decision.deny(rule.describe());
             }
         }
 
-        if (!restricted) {
-            return true;
+        if (allowRules.isEmpty()) {
+            return Decision.allow("no rule keeps the user out");
         }
 
-        return rules.stream()
-                .filter(rule -> rule.effect() == Rule.Effect.ALLOW)
-                .anyMatch(rule -> matches(rule.condition(), subject));
+        return allowRules.stream()
+                .filter(rule -> matches(rule.condition(), subject))
+                .findFirst()
+                .map(rule -> Decision.allow(rule.describe()))
+                .orElseGet(() -> Decision.deny("no allow rule matches the user"));
     }
 
     private static boolean matches(Condition condition, Subject subject) {

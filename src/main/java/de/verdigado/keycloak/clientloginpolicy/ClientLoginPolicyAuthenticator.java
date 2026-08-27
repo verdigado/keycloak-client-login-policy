@@ -22,12 +22,15 @@ public class ClientLoginPolicyAuthenticator implements Authenticator {
         RealmModel realm = context.getRealm();
         UserModel user = context.getUser();
 
-        if (LoginPolicy.allows(ClientRules.policy(), new KeycloakSubject(realm, user), clientId)) {
+        Decision decision = LoginPolicy.decide(ClientRules.policy(), new KeycloakSubject(realm, user), clientId);
+
+        if (decision.allowed()) {
+            log.debugf("%s may log in to %s: %s", user.getUsername(), clientId, decision.reason());
             context.success();
             return;
         }
 
-        log.infof("%s may not log in to %s", user.getUsername(), clientId);
+        log.infof("%s may not log in to %s: %s", user.getUsername(), clientId, decision.reason());
         context.getEvent().user(user).error(Errors.NOT_ALLOWED);
         Response challenge = context.form()
                 .setError(Messages.ACCESS_DENIED)

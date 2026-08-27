@@ -19,4 +19,9 @@ record Rule(Effect effect, Condition condition) {
     static Rule deny(String condition) {
         return new Rule(Effect.DENY, Condition.parse(condition));
     }
+
+    /** How this rule reads in a log line. */
+    String describe() {
+        return effect().name().toLowerCase() + " " + condition().describe();
+    }
 }

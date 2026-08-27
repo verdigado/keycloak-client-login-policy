@@ -12,6 +12,11 @@ record Condition(Kind kind, String value, String expected) {
         ATTRIBUTE
     }
 
+    String describe() {
+        String prefix = kind().name().toLowerCase() + ":" + value();
+        return expected() == null ? prefix : prefix + "=" + expected();
+    }
+
     static Condition parse(String text) {
         int colon = text.indexOf(':');
         if (colon < 0) {

@@ -1,5 +1,6 @@
 package de.verdigado.keycloak.clientloginpolicy;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -51,8 +52,8 @@ class LoginPolicyTest {
         Subject invited = new FakeSubject(Set.of(), Set.of(),
                 Map.of("guest", "TRUE", UserOverride.ALLOW_ATTRIBUTE, "demo-app"));
 
-        assertFalse(LoginPolicy.allows(policy, guest, "demo-app"));
-        assertTrue(LoginPolicy.allows(policy, invited, "demo-app"));
+        assertFalse(LoginPolicy.decide(policy, guest, "demo-app").allowed());
+        assertTrue(LoginPolicy.decide(policy, invited, "demo-app").allowed());
     }
 
     @Test
@@ -60,8 +61,8 @@ class LoginPolicyTest {
         Policy open = new Policy(Set.of(), List.of(), Map.of());
         Subject barred = new FakeSubject(Set.of(), Set.of(), Map.of(UserOverride.DENY_ATTRIBUTE, "demo-app"));
 
-        assertFalse(LoginPolicy.allows(open, barred, "demo-app"));
-        assertTrue(LoginPolicy.allows(open, barred, "other-app"));
+        assertFalse(LoginPolicy.decide(open, barred, "demo-app").allowed());
+        assertTrue(LoginPolicy.decide(open, barred, "other-app").allowed());
     }
 
     @Test
@@ -70,7 +71,7 @@ class LoginPolicyTest {
         Subject both = new FakeSubject(Set.of(), Set.of(),
                 Map.of(UserOverride.ALLOW_ATTRIBUTE, "demo-app", UserOverride.DENY_ATTRIBUTE, "demo-app"));
 
-        assertFalse(LoginPolicy.allows(open, both, "demo-app"));
+        assertFalse(LoginPolicy.decide(open, both, "demo-app").allowed());
     }
 
     @Test
@@ -78,29 +79,48 @@ class LoginPolicyTest {
         Policy policy = policyDenying("demo-app", "attribute:guest=TRUE");
         Subject barred = new FakeSubject(Set.of(), Set.of(), Map.of(UserOverride.DENY_ATTRIBUTE, "account-console"));
 
-        assertTrue(LoginPolicy.allows(policy, barred, "account-console"));
+        assertTrue(LoginPolicy.decide(policy, barred, "account-console").allowed());
+    }
+
+    @Test
+    void saysWhichRuleTurnedTheUserAway() {
+        List<Rule> rules = List.of(Rule.allow("role:staff"), Rule.deny("group:/board"));
+        Subject staffOnTheBoard = new FakeSubject(Set.of("staff"), Set.of("/board"));
+
+        assertEquals("deny group:/board", LoginPolicy.decide(rules, staffOnTheBoard).reason());
+        assertEquals("allow role:staff", LoginPolicy.decide(rules, STAFF).reason());
+        assertEquals("no allow rule matches the user", LoginPolicy.decide(rules, NOBODY).reason());
+    }
+
+    @Test
+    void saysWhichOverrideSettledIt() {
+        Policy open = new Policy(Set.of(), List.of(), Map.of());
+        Subject barred = new FakeSubject(Set.of(), Set.of(), Map.of(UserOverride.DENY_ATTRIBUTE, "demo-app"));
+
+        assertEquals("the user's client-login-policy.deny lists this client",
+                LoginPolicy.decide(open, barred, "demo-app").reason());
     }
 
     @Test
     void letsEveryoneInWhenThereAreNoRules() {
-        assertTrue(LoginPolicy.allows(List.of(), NOBODY));
+        assertTrue(LoginPolicy.decide(List.of(), NOBODY).allowed());
     }
 
     @Test
     void admitsOnlyUsersMatchingAnAllowRule() {
         List<Rule> rules = List.of(Rule.allow("role:staff"));
 
-        assertTrue(LoginPolicy.allows(rules, STAFF));
-        assertFalse(LoginPolicy.allows(rules, NOBODY));
+        assertTrue(LoginPolicy.decide(rules, STAFF).allowed());
+        assertFalse(LoginPolicy.decide(rules, NOBODY).allowed());
     }
 
     @Test
     void takesAnyOneOfSeveralAllowRules() {
         List<Rule> rules = List.of(Rule.allow("role:staff"), Rule.allow("group:/board"));
 
-        assertTrue(LoginPolicy.allows(rules, STAFF));
-        assertTrue(LoginPolicy.allows(rules, CHAIR));
-        assertFalse(LoginPolicy.allows(rules, NOBODY));
+        assertTrue(LoginPolicy.decide(rules, STAFF).allowed());
+        assertTrue(LoginPolicy.decide(rules, CHAIR).allowed());
+        assertFalse(LoginPolicy.decide(rules, NOBODY).allowed());
     }
 
     @Test
@@ -109,17 +129,17 @@ class LoginPolicyTest {
         Subject finance = new FakeSubject(Set.of(), Set.of(), Map.of("department", "finance"));
         Subject sales = new FakeSubject(Set.of(), Set.of(), Map.of("department", "sales"));
 
-        assertTrue(LoginPolicy.allows(rules, finance));
-        assertFalse(LoginPolicy.allows(rules, sales));
-        assertFalse(LoginPolicy.allows(rules, NOBODY));
+        assertTrue(LoginPolicy.decide(rules, finance).allowed());
+        assertFalse(LoginPolicy.decide(rules, sales).allowed());
+        assertFalse(LoginPolicy.decide(rules, NOBODY).allowed());
     }
 
     @Test
     void takesAnAttributeSetToAnything() {
         List<Rule> rules = List.of(Rule.allow("attribute:department"));
 
-        assertTrue(LoginPolicy.allows(rules, new FakeSubject(Set.of(), Set.of(), Map.of("department", "sales"))));
-        assertFalse(LoginPolicy.allows(rules, NOBODY));
+        assertTrue(LoginPolicy.decide(rules, new FakeSubject(Set.of(), Set.of(), Map.of("department", "sales"))).allowed());
+        assertFalse(LoginPolicy.decide(rules, NOBODY).allowed());
     }
 
     @Test
@@ -127,15 +147,15 @@ class LoginPolicyTest {
         List<Rule> rules = List.of(Rule.allow("role:staff"), Rule.deny("group:/board"));
         Subject staffOnTheBoard = new FakeSubject(Set.of("staff"), Set.of("/board"));
 
-        assertFalse(LoginPolicy.allows(rules, staffOnTheBoard));
-        assertTrue(LoginPolicy.allows(rules, STAFF));
+        assertFalse(LoginPolicy.decide(rules, staffOnTheBoard).allowed());
+        assertTrue(LoginPolicy.decide(rules, STAFF).allowed());
     }
 
     @Test
     void denyRulesAloneKeepTheClientOpenToEveryoneElse() {
         List<Rule> rules = List.of(Rule.deny("role:staff"));
 
-        assertFalse(LoginPolicy.allows(rules, STAFF));
-        assertTrue(LoginPolicy.allows(rules, NOBODY));
+        assertFalse(LoginPolicy.decide(rules, STAFF).allowed());
+        assertTrue(LoginPolicy.decide(rules, NOBODY).allowed());
     }
 }
