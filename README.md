@@ -22,6 +22,7 @@ The policy is written as a JSON document:
 
 ```json
 {
+  "exempt": ["reporting"],
   "default": [{ "deny": "group:/blocked" }],
   "clients": {
     "restricted-app": [
@@ -33,6 +34,10 @@ The policy is written as a JSON document:
   }
 }
 ```
+
+`exempt` lists clients the policy skips, `default` holds the rules for clients without an entry of their own, and a client listed with an empty list admits everyone.
+
+Leave `exempt` out and it holds Keycloak's own clients — `account`, `account-console`, `security-admin-console`, `admin-cli` and `broker`. A `default` that denies would otherwise shut people out of their own account page and admins out of the console. Write the key to replace that list, including with `[]` to exempt nothing. An exempt client is left alone even if it has an entry under `clients`.
 
 The document is still hardcoded in the provider — reading it from configuration comes next.
 

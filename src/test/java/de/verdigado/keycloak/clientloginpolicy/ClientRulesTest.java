@@ -3,6 +3,8 @@ package de.verdigado.keycloak.clientloginpolicy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 
 class ClientRulesTest {
@@ -14,6 +16,11 @@ class ClientRulesTest {
 
     @Test
     void fallsBackToTheDefaultForEveryoneElse() {
-        assertTrue(ClientRules.forClient("demo-app").isEmpty());
+        assertEquals(List.of(Rule.deny("attribute:guest=TRUE")), ClientRules.forClient("demo-app"));
+    }
+
+    @Test
+    void leavesKeycloaksOwnClientsAlone() {
+        assertTrue(ClientRules.forClient("account-console").isEmpty());
     }
 }

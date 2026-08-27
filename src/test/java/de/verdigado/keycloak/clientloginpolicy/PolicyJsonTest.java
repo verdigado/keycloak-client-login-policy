@@ -37,6 +37,42 @@ class PolicyJsonTest {
     }
 
     @Test
+    void keepsItsHandsOffKeycloaksOwnClientsUnlessTold() {
+        Policy policy = PolicyJson.parse(DOCUMENT);
+
+        assertTrue(policy.forClient("account-console").isEmpty());
+        assertEquals(List.of(Rule.deny("group:/blocked")), policy.forClient("some-other-app"));
+    }
+
+    @Test
+    void takesTheExemptListADocumentGives() {
+        Policy policy = PolicyJson.parse("""
+                { "exempt": ["reporting"], "default": [{ "deny": "group:/blocked" }] }
+                """);
+
+        assertTrue(policy.forClient("reporting").isEmpty());
+        assertEquals(List.of(Rule.deny("group:/blocked")), policy.forClient("account-console"));
+    }
+
+    @Test
+    void takesAnEmptyExemptListAsExemptingNothing() {
+        Policy policy = PolicyJson.parse("""
+                { "exempt": [], "default": [{ "deny": "group:/blocked" }] }
+                """);
+
+        assertEquals(List.of(Rule.deny("group:/blocked")), policy.forClient("account-console"));
+    }
+
+    @Test
+    void exemptionWinsOverAClientsOwnRules() {
+        Policy policy = PolicyJson.parse("""
+                { "exempt": ["reporting"], "clients": { "reporting": [{ "allow": "role:staff" }] } }
+                """);
+
+        assertTrue(policy.forClient("reporting").isEmpty());
+    }
+
+    @Test
     void takesADocumentWithoutClients() {
         assertTrue(PolicyJson.parse("{ \"default\": [] }").forClient("anything").isEmpty());
     }

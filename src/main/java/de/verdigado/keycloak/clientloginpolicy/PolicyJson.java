@@ -1,10 +1,12 @@
 package de.verdigado.keycloak.clientloginpolicy;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.io.IOException;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.keycloak.util.JsonSerialization;
 
@@ -13,6 +15,7 @@ import org.keycloak.util.JsonSerialization;
  *
  * <pre>
  * {
+ *   "exempt": ["account-console"],
  *   "default": [{ "deny": "group:/blocked" }],
  *   "clients": {
  *     "restricted-app": [{ "allow": "role:staff" }, { "allow": "group:/board" }]
@@ -22,12 +25,25 @@ import org.keycloak.util.JsonSerialization;
  */
 final class PolicyJson {
 
+    /**
+     * Left alone unless a document says otherwise: a default that denies would
+     * otherwise shut people out of their own account page, and admins out of
+     * the console.
+     */
+    static final Set<String> DEFAULT_EXEMPT = Set.of(
+            "account",
+            "account-console",
+            "security-admin-console",
+            "admin-cli",
+            "broker");
+
     private PolicyJson() {
     }
 
     static Policy parse(String document) {
         Map<String, Object> root = asMap(read(document), "document");
 
+        Set<String> exempt = exempt(root.get("exempt"));
         List<Rule> fallback = rules(root.get("default"), "default");
 
         Map<String, List<Rule>> byClient = new LinkedHashMap<>();
@@ -35,7 +51,7 @@ final class PolicyJson {
             byClient.put(entry.getKey(), rules(entry.getValue(), "client " + entry.getKey()));
         }
 
-        return new Policy(fallback, Map.copyOf(byClient));
+        return new Policy(exempt, fallback, Map.copyOf(byClient));
     }
 
     private static Object read(String document) {
@@ -44,6 +60,17 @@ final class PolicyJson {
         } catch (IOException e) {
             throw new IllegalArgumentException("policy is not readable json: " + e.getMessage(), e);
         }
+    }
+
+    private static Set<String> exempt(Object value) {
+        if (value == null) {
+            return DEFAULT_EXEMPT;
+        }
+        if (!(value instanceof List<?> entries)) {
+            throw new IllegalArgumentException("exempt must be a list of client ids");
+        }
+
+        return entries.stream().map(String::valueOf).collect(Collectors.toUnmodifiableSet());
     }
 
     private static List<Rule> rules(Object value, String where) {

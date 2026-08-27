@@ -10,7 +10,7 @@ final class ClientRules {
 
     private static final String DOCUMENT = """
             {
-              "default": [],
+              "default": [{ "deny": "attribute:guest=TRUE" }],
               "clients": {
                 "restricted-app": [
                   { "allow": "role:staff" },
