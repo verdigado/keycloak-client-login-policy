@@ -2,7 +2,15 @@
 
 A Keycloak provider that decides which users may log in to which client, based on user data such as roles and groups.
 
-A client can demand a realm role: users without it are turned away with an access denied page, whether the role comes to them directly, through a group or through a composite. Clients with no rule let everyone in. The rules are still hardcoded — per-client configuration comes next.
+Each client is held to a list of rules:
+
+- A user matching any `deny` rule is turned away, whatever else matches.
+- Otherwise, a client with `allow` rules admits only users matching one of them.
+- A client with no rules admits everyone, and so does a client with no policy of its own — those fall back to the default policy.
+
+A rule matches either a role, realm-wide (`role:staff`) or on a client (`role:restricted-app/access`), or a group by path (`group:/board`), which also covers everything nested under it. Roles inherited through a group or a composite count.
+
+Users turned away get an access denied page and the login is recorded as a `not_allowed` event. The rules are still hardcoded — per-client configuration comes next.
 
 ## Setup
 
