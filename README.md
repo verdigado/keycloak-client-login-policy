@@ -10,7 +10,21 @@ Each client is held to a list of rules:
 
 A rule matches either a role, realm-wide (`role:staff`) or on a client (`role:restricted-app/access`), or a group by path (`group:/board`), which also covers everything nested under it. Roles inherited through a group or a composite count.
 
-Users turned away get an access denied page and the login is recorded as a `not_allowed` event. The rules are still hardcoded — per-client configuration comes next.
+Users turned away get an access denied page and the login is recorded as a `not_allowed` event.
+
+The policy is written as a JSON document:
+
+```json
+{
+  "default": [{ "deny": "group:/blocked" }],
+  "clients": {
+    "restricted-app": [{ "allow": "role:staff" }, { "allow": "group:/board" }],
+    "open-app": []
+  }
+}
+```
+
+The document is still hardcoded in the provider — reading it from configuration comes next.
 
 ## Setup
 

@@ -1,25 +1,31 @@
 package de.verdigado.keycloak.clientloginpolicy;
 
 import java.util.List;
-import java.util.Map;
 
 /**
- * The policy each client is held to. Hardcoded for now; this is where
- * per-client configuration will hook in.
+ * The policy in force. Hardcoded for now; this is where a configured document
+ * will be read instead.
  */
 final class ClientRules {
 
-    private static final List<Rule> DEFAULT = List.of();
+    private static final String DOCUMENT = """
+            {
+              "default": [],
+              "clients": {
+                "restricted-app": [
+                  { "allow": "role:staff" },
+                  { "allow": "group:/board" }
+                ]
+              }
+            }
+            """;
 
-    private static final Map<String, List<Rule>> BY_CLIENT = Map.of(
-            "restricted-app", List.of(
-                    Rule.allow("role:staff"),
-                    Rule.allow("group:/board")));
+    private static final Policy POLICY = PolicyJson.parse(DOCUMENT);
 
     private ClientRules() {
     }
 
     static List<Rule> forClient(String clientId) {
-        return BY_CLIENT.getOrDefault(clientId, DEFAULT);
+        return POLICY.forClient(clientId);
     }
 }

@@ -1,0 +1,55 @@
+package de.verdigado.keycloak.clientloginpolicy;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
+class PolicyJsonTest {
+
+    private static final String DOCUMENT = """
+            {
+              "default": [{ "deny": "group:/blocked" }],
+              "clients": {
+                "restricted-app": [{ "allow": "role:staff" }, { "allow": "group:/board" }],
+                "open-app": []
+              }
+            }
+            """;
+
+    @Test
+    void readsAClientsRules() {
+        Policy policy = PolicyJson.parse(DOCUMENT);
+
+        assertEquals(List.of(Rule.allow("role:staff"), Rule.allow("group:/board")),
+                policy.forClient("restricted-app"));
+    }
+
+    @Test
+    void tellsAnEmptyRuleListApartFromNoEntry() {
+        Policy policy = PolicyJson.parse(DOCUMENT);
+
+        assertTrue(policy.forClient("open-app").isEmpty());
+        assertEquals(List.of(Rule.deny("group:/blocked")), policy.forClient("some-other-app"));
+    }
+
+    @Test
+    void takesADocumentWithoutClients() {
+        assertTrue(PolicyJson.parse("{ \"default\": [] }").forClient("anything").isEmpty());
+    }
+
+    @Test
+    void namesWhatItCannotRead() {
+        assertThrows(IllegalArgumentException.class, () -> PolicyJson.parse("not json at all"));
+        assertThrows(IllegalArgumentException.class, () -> PolicyJson.parse("{ \"clients\": [1, 2] }"));
+        assertThrows(IllegalArgumentException.class,
+                () -> PolicyJson.parse("{ \"clients\": { \"app\": [{ \"maybe\": \"role:staff\" }] } }"));
+        assertThrows(IllegalArgumentException.class,
+                () -> PolicyJson.parse("{ \"clients\": { \"app\": [{ \"allow\": \"a\", \"deny\": \"b\" }] } }"));
+        assertThrows(IllegalArgumentException.class,
+                () -> PolicyJson.parse("{ \"clients\": { \"app\": [{ \"allow\": \"staff\" }] } }"));
+    }
+}
