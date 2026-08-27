@@ -55,5 +55,16 @@ class ConditionTest {
         assertThrows(IllegalArgumentException.class, () -> Condition.of(Map.of("team", "staff")));
         assertThrows(IllegalArgumentException.class, () -> Condition.of(Map.of("role", "")));
         assertThrows(IllegalArgumentException.class, () -> Condition.of(Map.of("role", 3)));
+        assertThrows(IllegalArgumentException.class, () -> Condition.of(Map.of("group", 5)));
+        assertThrows(IllegalArgumentException.class,
+                () -> Condition.of(Map.of("attribute", "department", "value", 3)));
+    }
+
+    @Test
+    void refusesAKeyItWouldOtherwiseIgnore() {
+        assertThrows(IllegalArgumentException.class, () -> Condition.of(Map.of("role", "staff", "group", "/board")));
+        assertThrows(IllegalArgumentException.class, () -> Condition.of(Map.of("group", "/board", "client", "app")));
+        assertThrows(IllegalArgumentException.class,
+                () -> Condition.of(Map.of("attribute", "department", "vaule", "finance")));
     }
 }

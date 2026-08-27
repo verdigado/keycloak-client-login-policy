@@ -90,7 +90,12 @@ final class PolicyJson {
             throw new IllegalArgumentException("exempt must be a list of client ids");
         }
 
-        return entries.stream().map(String::valueOf).collect(Collectors.toUnmodifiableSet());
+        return entries.stream().map(entry -> {
+            if (!(entry instanceof String clientId)) {
+                throw new IllegalArgumentException("exempt lists client ids, got " + entry);
+            }
+            return clientId;
+        }).collect(Collectors.toUnmodifiableSet());
     }
 
     private static List<Rule> rules(Object value, String where) {

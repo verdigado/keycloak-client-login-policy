@@ -90,6 +90,11 @@ class PolicyJsonTest {
     }
 
     @Test
+    void refusesAnExemptEntryThatIsNotAClientId() {
+        assertThrows(IllegalArgumentException.class, () -> PolicyJson.parse("{ \"exempt\": [42] }"));
+    }
+
+    @Test
     void namesWhatItCannotRead() {
         assertThrows(IllegalArgumentException.class, () -> PolicyJson.parse("not json at all"));
         assertThrows(IllegalArgumentException.class, () -> PolicyJson.parse("{ \"clients\": [1, 2] }"));

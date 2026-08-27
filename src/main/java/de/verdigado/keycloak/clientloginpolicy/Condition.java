@@ -1,6 +1,7 @@
 package de.verdigado.keycloak.clientloginpolicy;
 
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Who a rule applies to. Written as an object so that nothing has to be escaped:
@@ -72,15 +73,27 @@ sealed interface Condition {
 
     static Condition of(Map<String, Object> fields) {
         if (fields.containsKey("role")) {
-            return new Role(text(fields, "client"), required(fields, "role"));
+            return only(fields, "role", Set.of("role", "client"),
+                    new Role(text(fields, "client"), required(fields, "role")));
         }
         if (fields.containsKey("group")) {
-            return group(required(fields, "group"));
+            return only(fields, "group", Set.of("group"), group(required(fields, "group")));
         }
         if (fields.containsKey("attribute")) {
-            return new Attribute(required(fields, "attribute"), text(fields, "value"));
+            return only(fields, "attribute", Set.of("attribute", "value"),
+                    new Attribute(required(fields, "attribute"), text(fields, "value")));
         }
         throw new IllegalArgumentException("a condition names a role, a group or an attribute, got " + fields.keySet());
+    }
+
+    /** So that a stray or contradictory key is reported rather than ignored. */
+    private static Condition only(Map<String, Object> fields, String kind, Set<String> known, Condition condition) {
+        for (String key : fields.keySet()) {
+            if (!known.contains(key)) {
+                throw new IllegalArgumentException("a " + kind + " condition has no use for '" + key + "'");
+            }
+        }
+        return condition;
     }
 
     private static String required(Map<String, Object> fields, String key) {
