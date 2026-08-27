@@ -8,6 +8,7 @@ final class ClientRules {
 
     private static final String DOCUMENT = """
             {
+              "version": 1,
               "default": [{ "deny": "attribute:guest=TRUE" }],
               "clients": {
                 "restricted-app": [

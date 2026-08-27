@@ -32,6 +32,7 @@ The policy is written as a JSON document:
 
 ```json
 {
+  "version": 1,
   "exempt": ["reporting"],
   "default": [{ "deny": "group:/blocked" }],
   "clients": {
@@ -44,6 +45,8 @@ The policy is written as a JSON document:
   }
 }
 ```
+
+`version` says which reading of the document to apply. It may be left out while there is only one, and a document naming a version this provider does not read is refused rather than half-understood.
 
 `exempt` lists clients the policy skips, `default` holds the rules for clients without an entry of their own, and a client listed with an empty list admits everyone.
 

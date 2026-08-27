@@ -12,6 +12,7 @@ class PolicyJsonTest {
 
     private static final String DOCUMENT = """
             {
+              "version": 1,
               "default": [{ "deny": "group:/blocked" }],
               "clients": {
                 "restricted-app": [{ "allow": "role:staff" }, { "allow": "group:/board" }],
@@ -75,6 +76,17 @@ class PolicyJsonTest {
     @Test
     void takesADocumentWithoutClients() {
         assertTrue(PolicyJson.parse("{ \"default\": [] }").forClient("anything").isEmpty());
+    }
+
+    @Test
+    void refusesAVersionItDoesNotRead() {
+        assertThrows(IllegalArgumentException.class, () -> PolicyJson.parse("{ \"version\": 2 }"));
+        assertThrows(IllegalArgumentException.class, () -> PolicyJson.parse("{ \"version\": \"1\" }"));
+    }
+
+    @Test
+    void takesADocumentWithoutAVersion() {
+        assertTrue(PolicyJson.parse("{ \"clients\": {} }").forClient("anything").isEmpty());
     }
 
     @Test

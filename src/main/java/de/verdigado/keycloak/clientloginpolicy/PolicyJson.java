@@ -1,10 +1,10 @@
 package de.verdigado.keycloak.clientloginpolicy;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.io.IOException;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -15,6 +15,7 @@ import org.keycloak.util.JsonSerialization;
  *
  * <pre>
  * {
+ *   "version": 1,
  *   "exempt": ["account-console"],
  *   "default": [{ "deny": "group:/blocked" }],
  *   "clients": {
@@ -24,6 +25,13 @@ import org.keycloak.util.JsonSerialization;
  * </pre>
  */
 final class PolicyJson {
+
+    /**
+     * What the keys below mean. A document may leave it out while there is only
+     * one version to mean, but naming it lets a later version change the rules
+     * without having to guess what an old document intended.
+     */
+    static final int VERSION = 1;
 
     /**
      * Left alone unless a document says otherwise: a default that denies would
@@ -43,6 +51,8 @@ final class PolicyJson {
     static Policy parse(String document) {
         Map<String, Object> root = asMap(read(document), "document");
 
+        requireKnownVersion(root.get("version"));
+
         Set<String> exempt = exempt(root.get("exempt"));
         List<Rule> fallback = rules(root.get("default"), "default");
 
@@ -52,6 +62,16 @@ final class PolicyJson {
         }
 
         return new Policy(exempt, fallback, Map.copyOf(byClient));
+    }
+
+    private static void requireKnownVersion(Object value) {
+        if (value == null) {
+            return;
+        }
+        if (!(value instanceof Number version) || version.intValue() != VERSION) {
+            throw new IllegalArgumentException("policy version " + value + " is not one this provider reads, "
+                    + "which is " + VERSION);
+        }
     }
 
     private static Object read(String document) {
