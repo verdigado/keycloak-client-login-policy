@@ -46,6 +46,8 @@ A fresh `make up` starts Keycloak without the provider: it is picked up from `de
 
 The `dev` realm in `dev/import/` is imported on first start; `make reset` wipes the database so a changed import is picked up again. It has two clients (`demo-app`, `restricted-app`), a `staff` realm role, two groups, and the users `alice` and `bob`, both with the password `password`. It ships the flow above already bound, so logging in as alice leaves a line in `make logs`.
 
+Optional: `make keycloak-src` clones the Keycloak this builds against into `.keycloak-src/`, so the SPI sources and Keycloak's own providers can be read and searched locally. Nothing in the build or the dev loop needs it.
+
 ## Releases
 
 The Keycloak this is built against lives in `<keycloak.version>` in [pom.xml](pom.xml) and nowhere else in prose. A version is `<keycloak.version>-<n>`: that Keycloak, plus a counter that starts at 1 for each new Keycloak and goes up with every release against it.
