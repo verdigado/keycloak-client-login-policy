@@ -58,6 +58,20 @@ sealed interface Condition {
         }
     }
 
+    /** Not written in a document; stands in for a policy that could not be read. */
+    record Everyone() implements Condition {
+
+        @Override
+        public boolean matches(Subject subject, String clientId) {
+            return true;
+        }
+
+        @Override
+        public String describe() {
+            return "everyone";
+        }
+    }
+
     record Group(Match path) implements Condition {
 
         @Override
@@ -90,6 +104,10 @@ sealed interface Condition {
         public String describe() {
             return value == null ? "attribute " + name + " set" : "attribute " + name + "=" + value.describe();
         }
+    }
+
+    static Condition everyone() {
+        return new Everyone();
     }
 
     static Condition realmRole(String name) {

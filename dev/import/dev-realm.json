@@ -122,7 +122,8 @@
           "requirement": "REQUIRED",
           "priority": 20,
           "autheticatorFlow": false,
-          "userSetupAllowed": false
+          "userSetupAllowed": false,
+          "authenticatorConfig": "dev policy"
         }
       ]
     },
@@ -216,5 +217,13 @@
         }
       }
     ]
-  }
+  },
+  "authenticatorConfig": [
+    {
+      "alias": "dev policy",
+      "config": {
+        "policy": "{\n  \"version\": 1,\n  \"default\": [\n    {\n      \"deny\": {\n        \"attribute\": \"guest\",\n        \"value\": \"TRUE\"\n      }\n    }\n  ],\n  \"clients\": {\n    \"restricted-app\": [\n      {\n        \"allow\": {\n          \"realmRole\": \"staff\"\n        }\n      },\n      {\n        \"allow\": {\n          \"group\": \"/board\"\n        }\n      }\n    ]\n  }\n}"
+      }
+    }
+  ]
 }

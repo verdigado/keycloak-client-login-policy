@@ -66,7 +66,9 @@ The policy is written as a JSON document:
 
 Leave `exempt` out and it holds Keycloak's own clients — `account`, `account-console`, `security-admin-console`, `admin-cli` and `broker`. A `default` that denies would otherwise shut people out of their own account page and admins out of the console. Write the key to replace that list, including with `[]` to exempt nothing. An exempt client is left alone even if it has an entry under `clients`.
 
-The document is still hardcoded in the provider — reading it from configuration comes next.
+The document lives in the `Client Login Policy` step's configuration, so it is edited in the admin console where the step is added, kept per realm, and carried along by realm export. An edit takes effect on the next login — no restart. A step with no document configured admits everyone.
+
+A document that cannot be read turns everyone away, and says so at error level in the log. Exempt clients still get in, so a typo cannot shut the account console and the admin console along with everything else.
 
 ## Setup
 
@@ -76,7 +78,7 @@ The policy is a step in an authentication flow, and Keycloak runs it only where 
 
 1. Duplicate the browser flow.
 2. Add a sub-flow at the top level, set it to Required, and move the existing top-level entries — Cookie, Kerberos, Identity Provider Redirector, Organization, forms — into it. They keep their own requirements.
-3. Add the `Client Login Policy` execution at the top level, below that sub-flow, set to Required.
+3. Add the `Client Login Policy` execution at the top level, below that sub-flow, set to Required, and put the policy document in its configuration.
 4. Bind the copy as the realm's browser flow.
 
 The result:
@@ -110,7 +112,7 @@ make logs
 
 A fresh `make up` starts Keycloak without the provider: it is picked up from `dev/providers/`, which stays empty until `make build` fills it. Java changes need `make build` too — Keycloak cannot hot-reload providers. A remote debugger can attach on port 8787.
 
-The `dev` realm in `dev/import/` is imported on first start; `make reset` wipes the database so a changed import is picked up again. It has two clients (`demo-app`, `restricted-app`), a `staff` realm role, two groups, and the users `alice` and `bob`, both with the password `password`. It ships the flow above already bound, so logging in as alice leaves a line in `make logs`.
+The `dev` realm in `dev/import/` is imported on first start; `make reset` wipes the database so a changed import is picked up again. It has two clients (`demo-app`, `restricted-app`), a `staff` realm role, two groups, and the users `alice` and `bob`, both with the password `password`. It ships the flow above already bound, with its policy document in the step's configuration, so logging in as alice leaves a line in `make logs`.
 
 Optional: `make keycloak-src` clones the Keycloak this builds against into `.keycloak-src/`, so the SPI sources and Keycloak's own providers can be read and searched locally. Nothing in the build or the dev loop needs it.
 
