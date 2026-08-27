@@ -2,6 +2,13 @@
 
 A Keycloak provider that decides which users may log in to which client, based on the user's roles, groups and attributes.
 
+## What it covers
+
+The policy runs as a step in an authentication flow, and flows are bound per protocol. In the browser flow it covers interactive logins for OIDC and SAML, including the device authorization grant, and it also runs when a user with an existing SSO session opens a second client without seeing a login form.
+
+- Clients with direct access grants enabled skip the browser flow. To cover them, build the direct grant flow the same way and bind it too.
+- Token refresh and token exchange issue tokens without running a flow, so a user who logged in before you changed the policy keeps access until the session or the refresh token expires.
+
 ## Policy
 
 The rules are one JSON document per realm, entered in the settings of the `Client Login Policy` step — see [Setup](#setup). An empty document lets everyone in, and an edit applies to the next login.
@@ -107,14 +114,7 @@ browser with login policy
 
 The extra sub-flow is needed. Keycloak ignores every Alternative on a level that also holds a Required step, so putting the policy next to Cookie and forms means no username form is ever shown and no user is ever set — the login fails before the policy decides anything.
 
-At the top level and last, the policy runs whichever way the user got in: a fresh password login, an identity provider, or an existing session reused for another client.
-
-### What this does not cover
-
-Flows are bound per protocol, and the browser flow covers interactive logins for OIDC and SAML, including the device authorization grant.
-
-- Clients with direct access grants enabled skip the browser flow. To cover them, build the direct grant flow the same way and bind it too.
-- Token refresh and token exchange issue tokens without running a flow, so a user who logged in before you changed the policy keeps access until the session or the refresh token expires.
+At the top level and last, the policy runs whichever way the user got in: a fresh password login, an identity provider, or an SSO session reused for another client.
 
 ## Development
 
