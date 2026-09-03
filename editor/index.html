@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Client Login Policy editor</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Client Login Policy editor</h1>
+      <p>
+        Build the document for the <code>Client Login Policy</code> step, then paste it into the
+        step's <strong>Policy</strong> field in Keycloak. The
+        <a href="https://github.com/verdigado/keycloak-client-login-policy#readme">readme</a>
+        explains the format and how to install the step.
+      </p>
+    </header>
+
+    <main>
+      <!-- Left: the form. Right: the document it makes, editable in its own right. -->
+      <section class="form" aria-label="The policy">
+        <fieldset>
+          <legend>Default rules</legend>
+          <p class="hint">
+            What every client that is not named below is held to. Leave it empty and those
+            clients admit everyone.
+          </p>
+          <div id="fallback"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Client specific rules</legend>
+          <div id="clients"></div>
+          <button type="button" id="add-client">Add a client</button>
+        </fieldset>
+
+        <fieldset>
+          <legend>Exempt clients</legend>
+          <p class="hint">
+            Clients the policy skips completely, even when they are named above with rules of
+            their own.
+          </p>
+          <label class="stacked">
+            One client id per line
+            <textarea id="exempt-list" rows="3" spellcheck="false"></textarea>
+          </label>
+          <label class="check">
+            <input type="checkbox" id="exempt-none" />
+            Exempt no client at all, not even Keycloak's own
+          </label>
+          <p class="hint" id="exempt-hint"></p>
+        </fieldset>
+      </section>
+
+      <section class="document" aria-label="The document">
+        <div class="document-head">
+          <h2>Policy</h2>
+          <button type="button" id="copy">Copy</button>
+        </div>
+        <textarea id="json" spellcheck="false" autocomplete="off"></textarea>
+        <p id="status" role="status"></p>
+      </section>
+    </main>
+
+    <script type="module" src="ui.js"></script>
+  </body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "exempt": ["reporting"],
+  "default": [{ "deny": { "group": "/blocked" } }],
+  "clients": {
+    "restricted-app": [
+      { "allow": { "realmRole": "staff" } },
+      { "allow": { "clientRole": "access" } },
+      { "allow": { "clientRole": "access", "client": "intranet" } },
+      { "allow": { "group": "/board" } },
+      { "allow": { "attribute": "department", "value": "finance" } },
+      { "allow": { "attribute": "cost-centre" } },
+      { "deny": { "realmRole": "suspended" } }
+    ],
+    "open-app": []
+  }
+}

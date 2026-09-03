@@ -1,0 +1,4 @@
+{
+  "exempt": [],
+  "default": [{ "deny": { "group": "/blocked" } }]
+}

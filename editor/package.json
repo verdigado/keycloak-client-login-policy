@@ -1,0 +1,9 @@
+{
+  "name": "keycloak-client-login-policy-editor",
+  "private": true,
+  "type": "module",
+  "description": "Builds a policy document for the Client Login Policy authenticator. No dependencies, no build step; the page is served as it lies here.",
+  "scripts": {
+    "test": "node --test"
+  }
+}

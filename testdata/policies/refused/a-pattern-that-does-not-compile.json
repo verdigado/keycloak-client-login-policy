@@ -1,0 +1,1 @@
+{ "clients": { "app": [{ "allow": { "realmRole": "[unclosed", "match": "regex" } }] } }

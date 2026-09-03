@@ -1,0 +1,48 @@
+name: pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "editor/**"
+      - "testdata/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time, and a deploy already running is worth finishing.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Test the editor
+        run: node --test
+        working-directory: editor
+
+      # The page is served as it lies in the repository, so what is only there
+      # to test it has no business being published.
+      - name: Leave the tests behind
+        run: rm -rf editor/test editor/package.json
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: editor
+      - id: deploy
+        uses: actions/deploy-pages@v4

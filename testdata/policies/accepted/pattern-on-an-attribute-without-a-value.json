@@ -1,0 +1,5 @@
+{
+  "clients": {
+    "app": [{ "allow": { "attribute": "department", "match": "regex" } }]
+  }
+}
