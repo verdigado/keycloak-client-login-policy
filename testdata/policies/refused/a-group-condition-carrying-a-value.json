@@ -1,0 +1,1 @@
+{ "clients": { "app": [{ "allow": { "group": "/board", "value": "finance" } }] } }

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "clients": {
+    "tenant-app": [
+      { "allow": { "realmRole": "^tenant-[0-9]+-staff$", "match": "regex" } },
+      { "allow": { "clientRole": "^access-.+$", "match": "regex", "client": "intranet" } },
+      { "allow": { "group": "^/tenants/[^/]+/staff$", "match": "regex" } },
+      { "allow": { "attribute": "department", "value": "^fin.*$", "match": "regex" } },
+      { "allow": { "realmRole": "staff", "match": "exact" } }
+    ]
+  }
+}

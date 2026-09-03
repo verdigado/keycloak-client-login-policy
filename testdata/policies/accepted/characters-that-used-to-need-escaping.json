@@ -1,0 +1,8 @@
+{
+  "clients": {
+    "app": [
+      { "allow": { "attribute": "cost=centre", "value": "a=b:c" } },
+      { "allow": { "group": "/a group/with:colons" } }
+    ]
+  }
+}
