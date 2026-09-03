@@ -90,5 +90,10 @@ function condition(text) {
 }
 
 function refusal(text) {
-  return assert.throws(() => parse(text), Error).message;
+  try {
+    parse(text);
+  } catch (error) {
+    return error.message;
+  }
+  return assert.fail(`expected this to be refused: ${text}`);
 }
