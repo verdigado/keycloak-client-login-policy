@@ -17,6 +17,18 @@
 
 const VERSION = 1;
 
+/**
+ * What the provider leaves alone when a document names no exempt clients. A
+ * document that names any replaces this list rather than adding to it.
+ */
+export const KEYCLOAK_CLIENTS = [
+  "account",
+  "account-console",
+  "security-admin-console",
+  "admin-cli",
+  "broker",
+];
+
 export function parse(document) {
   const root = readJson(document);
 

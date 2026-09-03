@@ -1,0 +1,213 @@
+:root {
+  color-scheme: light dark;
+  --ink: #111;
+  --dim: #5c5c5c;
+  --line: #d4d4d4;
+  --ground: #fbfbfa;
+  --raised: #fff;
+  --bad: #a11;
+  --warn: #8a5300;
+  --good: #176b3a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e8e8e6;
+    --dim: #a0a09c;
+    --line: #3a3a38;
+    --ground: #1a1a19;
+    --raised: #232322;
+    --bad: #f08a80;
+    --warn: #e0a458;
+    --good: #6fcf97;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 1.5rem;
+  background: var(--ground);
+  color: var(--ink);
+  font: 15px/1.5 system-ui, sans-serif;
+}
+
+h1 {
+  font-size: 1.3rem;
+  margin: 0 0 0.3rem;
+}
+
+h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+header p {
+  margin: 0 0 1.5rem;
+  max-width: 62ch;
+  color: var(--dim);
+}
+
+main {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+fieldset {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--raised);
+  margin: 0 0 1rem;
+  padding: 0.9rem 1rem 1rem;
+}
+
+/* Floating a legend takes it out of the cut-out in the border and lays it
+   inside the card like a heading. */
+legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+  margin-bottom: 0.7rem;
+  font-weight: 600;
+}
+
+legend + * {
+  clear: both;
+}
+
+.hint {
+  color: var(--dim);
+  margin: 0 0 0.7rem;
+  font-size: 0.9em;
+}
+
+.hint.warn {
+  color: var(--warn);
+}
+
+#exempt-hint {
+  margin: 0.5rem 0 0;
+}
+
+label.check {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+
+label.stacked {
+  display: block;
+  color: var(--dim);
+  font-size: 0.9em;
+}
+
+input[type="text"],
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  background: var(--ground);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.3rem 0.4rem;
+  min-width: 0;
+}
+
+textarea {
+  width: 100%;
+  font-family: ui-monospace, monospace;
+  font-size: 0.9em;
+  resize: vertical;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--dim);
+}
+
+.rule {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.rule input[type="text"] {
+  flex: 1 1 8rem;
+}
+
+.rule .drop {
+  margin-left: auto;
+}
+
+.client {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 0.8rem;
+}
+
+.client-head {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.client-head input[type="text"] {
+  flex: 1;
+}
+
+.empty {
+  color: var(--dim);
+  font-size: 0.9em;
+  padding: 0.4rem 0;
+}
+
+.document {
+  position: sticky;
+  top: 1.5rem;
+}
+
+.document-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+#json {
+  height: 26rem;
+}
+
+#status {
+  margin: 0.5rem 0 0;
+  white-space: pre-wrap;
+  color: var(--good);
+}
+
+#status.bad {
+  color: var(--bad);
+}
