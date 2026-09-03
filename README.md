@@ -13,6 +13,8 @@ The policy runs as a step in an authentication flow, and flows are bound per pro
 
 The rules are one JSON document per realm, entered in the settings of the `Client Login Policy` step — see [Setup](#setup). An empty document lets everyone in, and an edit applies to the next login.
 
+The [policy editor](https://verdigado.github.io/keycloak-client-login-policy/) builds that document in a form and turns down what this provider would turn down, so you can paste it in without having written the JSON by hand.
+
 ```json
 {
   "version": 1,
