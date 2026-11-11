@@ -8,6 +8,7 @@ The policy runs as a step in an authentication flow, and flows are bound per pro
 
 - Clients with direct access grants enabled skip the browser flow. To cover them, build the direct grant flow the same way and bind it too.
 - Token refresh and token exchange issue tokens without running a flow, so a user who logged in before you changed the policy keeps access until the session or the refresh token expires.
+- A service that only accepts tokens and never runs a login of its own is not covered by the step. The [audience filter](#audience-for-resource-servers) covers it.
 
 ## Policy
 
@@ -118,6 +119,33 @@ The extra sub-flow is needed. Keycloak ignores every Alternative on a level that
 
 At the top level and last, the policy runs whichever way the user got in: a fresh password login, an identity provider, or an SSO session reused for another client.
 
+## Audience for resource servers
+
+Some services never run a login. They only accept tokens that a client passes on to them, and are called resource servers. The policy step never runs for them, so a user can reach a resource server with a token from any client they may log in to.
+
+The `Client Login Policy Audience Filter` mapper closes that gap. Other mappers still decide what goes into `aud`, for example Keycloak's own Audience mapper. The filter runs after all of them and removes every client the user may not log in to, both from `aud` and from the client roles in `resource_access`. Each resource server then has to reject a token whose `aud` doesn't hold its own client id. That check lives in the resource server, not in Keycloak.
+
+How the filter decides:
+
+- It asks the policy the same question a login would ask: may this user log in to this client? Deny rules, per-user exceptions and exempt clients all count.
+- It uses the document in that client's own browser flow, which is the client's override if it has one, otherwise the realm's.
+- It checks every entry in `aud` and every client in `resource_access`, including the client the token was issued to.
+- It keeps an entry the policy says nothing about: a value that isn't a client id, or a client whose browser flow has no enabled policy step.
+- A broken document removes every client that isn't exempt, the same as at login.
+- It leaves a service account's token alone, as from the client credentials grant. Keycloak never lets a service account log in, and what its tokens carry is set on its client.
+- It runs whenever a token is issued, so a token refresh or token exchange is decided again with the current document.
+- It has no settings. It always filters access tokens, lightweight ones included, and introspection responses.
+
+A resource server can also send a token to Keycloak's introspection endpoint instead of reading it, for example to notice a logout before the token expires. The answer's `aud` is then decided again with the current document. `active: true` in that answer only means the token is still valid, so the resource server has to check `aud` there too.
+
+### Setup
+
+Every OIDC client whose tokens carry an `aud` that a resource server checks needs the filter. Without it, that client's tokens pass on every audience its mappers put in.
+
+The simplest way is to add the mapper once, by configuration, to a client scope that all those clients have as a default scope. The built-in `roles` scope fits, since every client gets it as a default scope. A mapper added to a scope applies to every client with that scope from their next token on.
+
+The realm's default client scopes are only copied into a client when it is created. After that, each client keeps its own list. An admin can remove `roles` from a client or make it optional, which is only applied when the client asks for it, and a client created by an import or a client registration may come without it. So check each client's list, and assign a new scope to existing clients by hand.
+
 ## Development
 
 Needed: a JDK, 17 or newer — `sudo apt install openjdk-21-jdk-headless`, a JRE is not enough — and Docker with the compose plugin. Maven comes from the checked-in wrapper.
@@ -131,7 +159,7 @@ make logs
 
 A fresh `make up` starts Keycloak without the provider: it is picked up from `dev/providers/`, which stays empty until `make build` fills it. Java changes need `make build` too — Keycloak cannot reload providers while it runs. A remote debugger can attach on port 8787.
 
-The `dev` realm in `dev/import/` is imported on first start; `make reset` wipes the database so a changed import is read again. It has two clients (`demo-app`, `restricted-app`), a `staff` realm role, two groups, and the users `alice` and `bob`, both with the password `password`. The flow above is already bound, with its document in the step's configuration, so logging in as alice leaves a line in `make logs`.
+The `dev` realm in `dev/import/` is imported on first start; `make reset` wipes the database so a changed import is read again. It has two clients (`demo-app`, `restricted-app`), a `staff` realm role, two groups, and the users `alice` and `bob`, both with the password `password`. The flow above is already bound, with its document in the step's configuration, so logging in as alice leaves a line in `make logs`. `demo-app` adds `restricted-app` to its tokens' `aud` and has the policy audience filter, so alice's tokens for `demo-app` keep `restricted-app` and bob's lose it.
 
 Optional: `make keycloak-src` clones the Keycloak this builds against into `.keycloak-src/`, so its SPI sources and its own providers can be read and searched locally. The build and the dev loop do not need it.
 

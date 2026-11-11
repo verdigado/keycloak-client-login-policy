@@ -22,7 +22,8 @@ public class ClientLoginPolicyAuthenticator implements Authenticator {
         RealmModel realm = context.getRealm();
         UserModel user = context.getUser();
 
-        Decision decision = LoginPolicy.decide(policyFor(context), new KeycloakSubject(realm, user), clientId);
+        Policy policy = ConfiguredPolicy.orClosed(context.getAuthenticatorConfig());
+        Decision decision = LoginPolicy.decide(policy, new KeycloakSubject(realm, user), clientId);
 
         if (decision.allowed()) {
             log.debugf("%s may log in to %s: %s", user.getUsername(), clientId, decision.reason());
@@ -36,15 +37,6 @@ public class ClientLoginPolicyAuthenticator implements Authenticator {
                 .setError(Messages.ACCESS_DENIED)
                 .createErrorPage(Response.Status.FORBIDDEN);
         context.failure(AuthenticationFlowError.ACCESS_DENIED, challenge);
-    }
-
-    private Policy policyFor(AuthenticationFlowContext context) {
-        try {
-            return ConfiguredPolicy.of(context.getAuthenticatorConfig());
-        } catch (IllegalArgumentException e) {
-            log.errorf("the configured policy cannot be read, turning everyone away: %s", e.getMessage());
-            return Policy.CLOSED;
-        }
     }
 
     @Override

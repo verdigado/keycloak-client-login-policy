@@ -1,5 +1,6 @@
 package de.verdigado.keycloak.clientloginpolicy;
 
+import java.util.Set;
 import java.util.stream.Stream;
 
 import org.jboss.logging.Logger;
@@ -16,6 +17,8 @@ class KeycloakSubject implements Subject {
 
     private final RealmModel realm;
     private final UserModel user;
+
+    private Set<RoleModel> heldRoles;
 
     KeycloakSubject(RealmModel realm, UserModel user) {
         this.realm = realm;
@@ -58,9 +61,16 @@ class KeycloakSubject implements Subject {
         return user.getAttributeStream(name);
     }
 
-    /** Everything the user holds, through groups and composites alike. */
+    /**
+     * Everything the user holds, through groups and composites alike. Read
+     * once, because a token asks about many clients and this walks every
+     * group and composite.
+     */
     private Stream<RoleModel> heldRoles() {
-        return RoleUtils.getDeepUserRoleMappings(user).stream();
+        if (heldRoles == null) {
+            heldRoles = RoleUtils.getDeepUserRoleMappings(user);
+        }
+        return heldRoles.stream();
     }
 
     private boolean holds(RoleModel role, String what) {
