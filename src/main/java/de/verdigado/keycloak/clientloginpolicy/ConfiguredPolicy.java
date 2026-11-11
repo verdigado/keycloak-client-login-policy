@@ -3,6 +3,7 @@ package de.verdigado.keycloak.clientloginpolicy;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.jboss.logging.Logger;
 import org.keycloak.models.AuthenticatorConfigModel;
 
 /**
@@ -10,6 +11,8 @@ import org.keycloak.models.AuthenticatorConfigModel;
  * once and kept, because a login must not pay for parsing one.
  */
 final class ConfiguredPolicy {
+
+    private static final Logger log = Logger.getLogger(ConfiguredPolicy.class);
 
     static final String DOCUMENT = "policy";
 
@@ -20,6 +23,16 @@ final class ConfiguredPolicy {
     private static final int KEEP = 64;
 
     private ConfiguredPolicy() {
+    }
+
+    /** Like {@link #of}, but a document that cannot be read turns everyone away. */
+    static Policy orClosed(AuthenticatorConfigModel config) {
+        try {
+            return of(config);
+        } catch (IllegalArgumentException e) {
+            log.errorf("the configured policy cannot be read, turning everyone away: %s", e.getMessage());
+            return Policy.CLOSED;
+        }
     }
 
     static Policy of(AuthenticatorConfigModel config) {
