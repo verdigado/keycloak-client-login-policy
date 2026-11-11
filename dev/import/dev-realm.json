@@ -52,9 +52,9 @@
           }
         },
         {
-          "name": "client login policy audience",
+          "name": "client login policy audience filter",
           "protocol": "openid-connect",
-          "protocolMapper": "client-login-policy-audience",
+          "protocolMapper": "client-login-policy-audience-filter",
           "config": {}
         }
       ]

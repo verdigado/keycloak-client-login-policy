@@ -25,12 +25,12 @@ import org.keycloak.representations.AccessToken;
  * after all of them and only takes away. Mappers run whenever a token is
  * issued, so the answer is as fresh as the token.
  */
-public class PolicyAudienceMapper extends AbstractOIDCProtocolMapper
+public class PolicyAudienceFilter extends AbstractOIDCProtocolMapper
         implements OIDCAccessTokenMapper, TokenIntrospectionTokenMapper {
 
-    private static final Logger log = Logger.getLogger(PolicyAudienceMapper.class);
+    private static final Logger log = Logger.getLogger(PolicyAudienceFilter.class);
 
-    public static final String PROVIDER_ID = "client-login-policy-audience";
+    public static final String PROVIDER_ID = "client-login-policy-audience-filter";
 
     @Override
     public String getId() {
@@ -39,7 +39,7 @@ public class PolicyAudienceMapper extends AbstractOIDCProtocolMapper
 
     @Override
     public String getDisplayType() {
-        return "Client Login Policy Audience";
+        return "Client Login Policy Audience Filter";
     }
 
     @Override

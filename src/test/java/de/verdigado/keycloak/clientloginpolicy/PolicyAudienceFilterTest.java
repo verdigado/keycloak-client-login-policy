@@ -11,7 +11,7 @@ import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 
-class PolicyAudienceMapperTest {
+class PolicyAudienceFilterTest {
 
     private static final Subject GUEST = withAttributes(Map.of("guest", "TRUE"));
     private static final Subject MEMBER = withAttributes(Map.of());
@@ -58,22 +58,22 @@ class PolicyAudienceMapperTest {
 
     private static List<String> kept(Subject subject, Function<String, Optional<Policy>> policyFor,
             String... audience) {
-        return PolicyAudienceMapper.kept(List.of(audience), subject, policyFor, "someone");
+        return PolicyAudienceFilter.kept(List.of(audience), subject, policyFor, "someone");
     }
 
     @Test
     void keepsItsProviderId() {
-        assertEquals("client-login-policy-audience", new PolicyAudienceMapper().getId());
+        assertEquals("client-login-policy-audience-filter", new PolicyAudienceFilter().getId());
     }
 
     @Test
     void runsAfterEveryOtherMapper() {
-        assertEquals(Integer.MAX_VALUE, new PolicyAudienceMapper().getPriority());
+        assertEquals(Integer.MAX_VALUE, new PolicyAudienceFilter().getPriority());
     }
 
     @Test
     void offersNoSwitchToTurnTheFilterOff() {
-        assertEquals(List.of(), new PolicyAudienceMapper().getConfigProperties());
+        assertEquals(List.of(), new PolicyAudienceFilter().getConfigProperties());
     }
 
     @Test
