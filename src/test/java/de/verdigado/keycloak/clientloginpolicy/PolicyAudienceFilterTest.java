@@ -3,6 +3,7 @@ package de.verdigado.keycloak.clientloginpolicy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -166,5 +167,20 @@ class PolicyAudienceFilterTest {
 
         assertEquals(List.of("wolke"), List.of(result.getAudience()));
         assertEquals(Set.of("user"), result.getResourceAccess("wolke").getRoles());
+    }
+
+    @Test
+    void decidesAClientInBothTheAudienceAndTheRolesOnce() {
+        List<String> asked = new ArrayList<>();
+        AccessToken token = new AccessToken();
+        token.audience("wolke");
+        token.addAccess("wolke").addRole("user");
+
+        PolicyAudienceFilter.filter(token, PolicyAudienceFilter.mayKeep(GUEST, clientId -> {
+            asked.add(clientId);
+            return Optional.of(NO_GUESTS);
+        }, "someone"));
+
+        assertEquals(List.of("wolke"), asked);
     }
 }

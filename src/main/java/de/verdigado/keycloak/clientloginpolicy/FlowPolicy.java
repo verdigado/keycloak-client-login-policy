@@ -1,6 +1,9 @@
 package de.verdigado.keycloak.clientloginpolicy;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import org.keycloak.models.AuthenticationExecutionModel;
@@ -13,25 +16,38 @@ import org.keycloak.models.utils.AuthenticationFlowResolver;
 
 /**
  * The policy a browser login to a client would be held to, read from the
- * `Client Login Policy` step of the flow that login would run. Empty when that
- * flow has no enabled step, so the policy would not run there at all.
+ * `Client Login Policy` step of the flow that login would run. Empty for a
+ * value that is not a client, and when that flow has no enabled step, so the
+ * policy would not run there at all.
  */
 final class FlowPolicy {
 
     private FlowPolicy() {
     }
 
-    static Optional<Policy> of(RealmModel realm, ClientModel client) {
+    /**
+     * Reads each flow once, however many of the clients asked about share it,
+     * so it should live no longer than one token.
+     */
+    static Function<String, Optional<Policy>> byClientId(RealmModel realm) {
+        Map<String, Optional<Policy>> byFlow = new HashMap<>();
+        return clientId -> {
+            ClientModel client = realm.getClientByClientId(clientId);
+            AuthenticationFlowModel flow = client == null ? null : browserFlow(realm, client);
+            return flow == null
+                    ? Optional.empty()
+                    : byFlow.computeIfAbsent(flow.getId(), id -> inFlow(realm, id));
+        };
+    }
+
+    private static AuthenticationFlowModel browserFlow(RealmModel realm, ClientModel client) {
         AuthenticationFlowModel flow = AuthenticationFlowResolver.resolveBindingOverrideFlowForClient(
                 client, AuthenticationFlowBindings.BROWSER_BINDING);
-        if (flow == null) {
-            flow = realm.getBrowserFlow();
-        }
-        if (flow == null) {
-            return Optional.empty();
-        }
+        return flow != null ? flow : realm.getBrowserFlow();
+    }
 
-        return step(realm, flow.getId()).map(step -> ConfiguredPolicy.orClosed(configOf(realm, step)));
+    private static Optional<Policy> inFlow(RealmModel realm, String flowId) {
+        return step(realm, flowId).map(step -> ConfiguredPolicy.orClosed(configOf(realm, step)));
     }
 
     private static AuthenticatorConfigModel configOf(RealmModel realm, AuthenticationExecutionModel step) {

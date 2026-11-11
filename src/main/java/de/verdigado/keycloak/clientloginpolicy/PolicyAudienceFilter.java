@@ -1,13 +1,14 @@
 package de.verdigado.keycloak.clientloginpolicy;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.jboss.logging.Logger;
-import org.keycloak.models.ClientModel;
 import org.keycloak.models.ClientSessionContext;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.ProtocolMapperModel;
@@ -88,8 +89,7 @@ public class PolicyAudienceFilter extends AbstractOIDCProtocolMapper
     private static void filter(AccessToken token, UserSessionModel userSession) {
         RealmModel realm = userSession.getRealm();
         UserModel user = userSession.getUser();
-        filter(token, mayKeep(new KeycloakSubject(realm, user), clientId -> policyFor(realm, clientId),
-                user.getUsername()));
+        filter(token, mayKeep(new KeycloakSubject(realm, user), FlowPolicy.byClientId(realm), user.getUsername()));
     }
 
     /**
@@ -108,23 +108,23 @@ public class PolicyAudienceFilter extends AbstractOIDCProtocolMapper
     /**
      * Whether the user may keep a client in the token. An entry the policy has
      * no rules for — not a client, or a client whose login never runs the
-     * policy — stays.
+     * policy — stays. Each entry is decided once, since the audience and the
+     * client roles mostly name the same clients.
      */
     static Predicate<String> mayKeep(Subject subject, Function<String, Optional<Policy>> policyFor,
             String username) {
-        return entry -> policyFor.apply(entry)
-                .map(policy -> {
-                    Decision decision = LoginPolicy.decide(policy, subject, entry);
-                    if (!decision.allowed()) {
-                        log.debugf("removing %s from the token of %s: %s", entry, username, decision.reason());
-                    }
-                    return decision.allowed();
-                })
-                .orElse(true);
+        Map<String, Boolean> decided = new HashMap<>();
+        return entry -> decided.computeIfAbsent(entry, e -> mayKeep(subject, policyFor.apply(e), e, username));
     }
 
-    private static Optional<Policy> policyFor(RealmModel realm, String clientId) {
-        ClientModel client = realm.getClientByClientId(clientId);
-        return client == null ? Optional.empty() : FlowPolicy.of(realm, client);
+    private static boolean mayKeep(Subject subject, Optional<Policy> policy, String entry, String username) {
+        if (policy.isEmpty()) {
+            return true;
+        }
+        Decision decision = LoginPolicy.decide(policy.get(), subject, entry);
+        if (!decision.allowed()) {
+            log.debugf("removing %s from the token of %s: %s", entry, username, decision.reason());
+        }
+        return decision.allowed();
     }
 }
