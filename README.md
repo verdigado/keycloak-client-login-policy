@@ -123,17 +123,20 @@ At the top level and last, the policy runs whichever way the user got in: a fres
 
 Some services never run a login. They only accept tokens that a client passes on to them, and are called resource servers. The policy step never runs for them, so a user can reach a resource server with a token from any client they may log in to.
 
-The `Client Login Policy Audience Filter` mapper closes that gap. Other mappers still decide what goes into `aud`, for example Keycloak's own Audience mapper. The filter runs after all of them and removes every client the user may not log in to. Each resource server then has to reject a token whose `aud` doesn't hold its own client id. That check lives in the resource server, not in Keycloak.
+The `Client Login Policy Audience Filter` mapper closes that gap. Other mappers still decide what goes into `aud`, for example Keycloak's own Audience mapper. The filter runs after all of them and removes every client the user may not log in to, both from `aud` and from the client roles in `resource_access`. Each resource server then has to reject a token whose `aud` doesn't hold its own client id. That check lives in the resource server, not in Keycloak.
 
 How the filter decides:
 
 - It asks the policy the same question a login would ask: may this user log in to this client? Deny rules, per-user exceptions and exempt clients all count.
 - It uses the document in that client's own browser flow, which is the client's override if it has one, otherwise the realm's.
-- It checks every entry in `aud`, including the client the token was issued to.
+- It checks every entry in `aud` and every client in `resource_access`, including the client the token was issued to.
 - It keeps an entry the policy says nothing about: a value that isn't a client id, or a client whose browser flow has no enabled policy step.
 - A broken document removes every client that isn't exempt, the same as at login.
+- It leaves a service account's token alone, as from the client credentials grant. Keycloak never lets a service account log in, and what its tokens carry is set on its client.
 - It runs whenever a token is issued, so a token refresh or token exchange is decided again with the current document.
 - It has no settings. It always filters access tokens, lightweight ones included, and introspection responses.
+
+A resource server can also send a token to Keycloak's introspection endpoint instead of reading it, for example to notice a logout before the token expires. The answer's `aud` is then decided again with the current document. `active: true` in that answer only means the token is still valid, so the resource server has to check `aud` there too.
 
 ### Setup
 
