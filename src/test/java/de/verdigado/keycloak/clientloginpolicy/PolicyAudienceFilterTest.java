@@ -3,6 +3,7 @@ package de.verdigado.keycloak.clientloginpolicy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +13,8 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
+import org.keycloak.models.UserModel;
+import org.keycloak.models.UserSessionModel;
 import org.keycloak.representations.AccessToken;
 
 class PolicyAudienceFilterTest {
@@ -182,5 +185,31 @@ class PolicyAudienceFilterTest {
         }, "someone"));
 
         assertEquals(List.of("wolke"), asked);
+    }
+
+    @Test
+    void leavesAServiceAccountsTokenAlone() {
+        UserModel serviceAccount = proxy(UserModel.class, method -> switch (method) {
+            case "getServiceAccountClientLink" -> "client-uuid";
+            default -> throw new UnsupportedOperationException(method);
+        });
+        UserSessionModel session = proxy(UserSessionModel.class, method -> switch (method) {
+            case "getUser" -> serviceAccount;
+            default -> throw new UnsupportedOperationException(method);
+        });
+        AccessToken token = new AccessToken();
+        token.audience("wolke");
+        token.addAccess("wolke").addRole("user");
+
+        PolicyAudienceFilter.filter(token, session);
+
+        assertEquals(List.of("wolke"), List.of(token.getAudience()));
+        assertEquals(Set.of("wolke"), token.getResourceAccess().keySet());
+    }
+
+    /** Answers only the methods the code under test should call. */
+    private static <T> T proxy(Class<T> type, Function<String, Object> answer) {
+        return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] { type },
+                (self, method, args) -> answer.apply(method.getName())));
     }
 }

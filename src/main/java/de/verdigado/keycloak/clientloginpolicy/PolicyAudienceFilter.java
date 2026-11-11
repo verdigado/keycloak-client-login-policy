@@ -86,9 +86,17 @@ public class PolicyAudienceFilter extends AbstractOIDCProtocolMapper
         return token;
     }
 
-    private static void filter(AccessToken token, UserSessionModel userSession) {
-        RealmModel realm = userSession.getRealm();
+    /**
+     * Leaves a service account's token alone: Keycloak never lets one log in,
+     * so the policy has nothing to say about it, and its audience and roles
+     * are already set by an admin on its client.
+     */
+    static void filter(AccessToken token, UserSessionModel userSession) {
         UserModel user = userSession.getUser();
+        if (user.getServiceAccountClientLink() != null) {
+            return;
+        }
+        RealmModel realm = userSession.getRealm();
         filter(token, mayKeep(new KeycloakSubject(realm, user), FlowPolicy.byClientId(realm), user.getUsername()));
     }
 
