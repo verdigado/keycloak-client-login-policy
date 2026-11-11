@@ -121,15 +121,27 @@ At the top level and last, the policy runs whichever way the user got in: a fres
 
 ## Audience for resource servers
 
-A token issued to one client is often passed on to another service, a resource server, that never runs a login. The policy step never asks about that service, so a user who may not use it gets in with a token from a client they may use.
+Some services never run a login. They only accept tokens that a client passes on to them, and are called resource servers. The policy step never runs for them, so a user can reach a resource server with a token from any client they may log in to.
 
-The `Client Login Policy Audience Filter` mapper closes that gap. What goes into `aud` stays the job of the usual mappers, like Keycloak's own Audience mapper. This one runs after all of them and removes every client the policy would not let the user log in to, so a resource server can accept a token only if `aud` holds its own client id. The decision follows the same document as the login step, with deny rules, per-user exceptions and exempt clients, and the mapper makes it again for every token, refresh and token exchange included. That covers the client the token was issued to as well, if it is in `aud`. The mapper has no settings and always filters access tokens, lightweight ones included, and introspection responses.
+The `Client Login Policy Audience Filter` mapper closes that gap. Other mappers still decide what goes into `aud`, for example Keycloak's own Audience mapper. The filter runs after all of them and removes every client the user may not log in to. Each resource server then has to reject a token whose `aud` doesn't hold its own client id. That check lives in the resource server, not in Keycloak.
 
-Each client is decided with the policy step in its own browser flow, the client's override if it has one. An entry the policy has no rules for stays: one that isn't a client, or a client whose browser flow has no enabled policy step. A broken document removes every client that isn't exempt, the same as at login.
+How the filter decides:
 
-1. Open the built-in `roles` client scope, which every client gets as a default scope, and add a mapper to it by configuration, `Client Login Policy Audience Filter`. Its name already stays out of the `scope` claim.
-2. If a client lacks `roles`, use another default scope that every client has, or create one with **Include in token scope** off. Realm-wide default client scopes are only given to clients created afterwards, so a new scope has to be assigned to existing clients by hand.
-3. Have each resource server check that `aud` holds its client id, and reject the token otherwise.
+- It asks the policy the same question a login would ask: may this user log in to this client? Deny rules, per-user exceptions and exempt clients all count.
+- It uses the document in that client's own browser flow, which is the client's override if it has one, otherwise the realm's.
+- It checks every entry in `aud`, including the client the token was issued to.
+- It keeps an entry the policy says nothing about: a value that isn't a client id, or a client whose browser flow has no enabled policy step.
+- A broken document removes every client that isn't exempt, the same as at login.
+- It runs whenever a token is issued, so a token refresh or token exchange is decided again with the current document.
+- It has no settings. It always filters access tokens, lightweight ones included, and introspection responses.
+
+### Setup
+
+Every OIDC client whose tokens carry an `aud` that a resource server checks needs the filter. Without it, that client's tokens pass on every audience its mappers put in.
+
+The simplest way is to add the mapper once, by configuration, to a client scope that all those clients have as a default scope. The built-in `roles` scope fits, since every client gets it as a default scope. A mapper added to a scope applies to every client with that scope from their next token on.
+
+The realm's default client scopes are only copied into a client when it is created. After that, each client keeps its own list. An admin can remove `roles` from a client or make it optional, which is only applied when the client asks for it, and a client created by an import or a client registration may come without it. So check each client's list, and assign a new scope to existing clients by hand.
 
 ## Development
 
