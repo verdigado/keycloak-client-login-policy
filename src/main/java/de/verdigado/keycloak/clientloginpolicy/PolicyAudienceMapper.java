@@ -5,12 +5,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
 import org.jboss.logging.Logger;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.ClientSessionContext;
-import org.keycloak.models.Constants;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.ProtocolMapperModel;
 import org.keycloak.models.RealmModel;
@@ -23,10 +21,11 @@ import org.keycloak.provider.ProviderConfigProperty;
 import org.keycloak.representations.IDToken;
 
 /**
- * Adds each target client to the token's audience if the policy would let the
- * user log in there, so a service that only receives tokens can tell from
- * {@code aud} alone. Mappers run whenever a token is issued, so the answer is
- * as fresh as the token.
+ * Removes every client from the token's audience that the policy would not let
+ * the user log in to, so a service that only receives tokens can rely on
+ * {@code aud}. Other mappers decide what goes into the audience; this one runs
+ * after all of them and only takes away. Mappers run whenever a token is
+ * issued, so the answer is as fresh as the token.
  */
 public class PolicyAudienceMapper extends AbstractOIDCProtocolMapper
         implements OIDCAccessTokenMapper, TokenIntrospectionTokenMapper {
@@ -35,19 +34,9 @@ public class PolicyAudienceMapper extends AbstractOIDCProtocolMapper
 
     public static final String PROVIDER_ID = "client-login-policy-audience";
 
-    static final String TARGETS = "targets";
-
     private static final List<ProviderConfigProperty> CONFIG_PROPERTIES = new ArrayList<>();
 
     static {
-        ProviderConfigProperty targets = new ProviderConfigProperty();
-        targets.setName(TARGETS);
-        targets.setLabel("Target clients");
-        targets.setType(ProviderConfigProperty.MULTIVALUED_STRING_TYPE);
-        targets.setHelpText("Client ids to add to the audience, each only if the client login policy "
-                + "would let the user log in to that client.");
-        CONFIG_PROPERTIES.add(targets);
-
         OIDCAttributeMapperHelper.addIncludeInTokensConfig(CONFIG_PROPERTIES, PolicyAudienceMapper.class);
     }
 
@@ -68,7 +57,8 @@ public class PolicyAudienceMapper extends AbstractOIDCProtocolMapper
 
     @Override
     public String getHelpText() {
-        return "Adds each target client to the audience (aud) if the client login policy lets the user in there.";
+        return "Removes each client from the audience (aud) that the client login policy would not let the user "
+                + "log in to. Runs after every other mapper.";
     }
 
     @Override
@@ -76,59 +66,48 @@ public class PolicyAudienceMapper extends AbstractOIDCProtocolMapper
         return CONFIG_PROPERTIES;
     }
 
+    /** Last, so the audience is complete before it is filtered. */
+    @Override
+    public int getPriority() {
+        return Integer.MAX_VALUE;
+    }
+
     @Override
     protected void setClaim(IDToken token, ProtocolMapperModel mappingModel, UserSessionModel userSession,
             KeycloakSession session, ClientSessionContext clientSessionCtx) {
-        RealmModel realm = userSession.getRealm();
-        String username = userSession.getUser().getUsername();
-        Subject subject = new KeycloakSubject(realm, userSession.getUser());
-
-        admitted(targets(mappingModel), subject, clientId -> policyFor(realm, clientId), username)
-                .forEach(token::addAudience);
-    }
-
-    static List<String> targets(ProtocolMapperModel mappingModel) {
-        String value = mappingModel.getConfig() == null ? null : mappingModel.getConfig().get(TARGETS);
-        if (value == null) {
-            return List.of();
+        String[] audience = token.getAudience();
+        if (audience == null || audience.length == 0) {
+            return;
         }
-        return Arrays.stream(Constants.CFG_DELIMITER_PATTERN.split(value.strip()))
-                .filter(target -> !target.isBlank())
-                .toList();
+
+        RealmModel realm = userSession.getRealm();
+        Subject subject = new KeycloakSubject(realm, userSession.getUser());
+        List<String> kept = kept(Arrays.asList(audience), subject, clientId -> policyFor(realm, clientId),
+                userSession.getUser().getUsername());
+
+        token.audience(kept.isEmpty() ? null : kept.toArray(String[]::new));
     }
 
     /**
-     * The targets the user may log in to. A target without a policy to ask is
-     * left out, so a mistake in the setup cannot hand out access.
+     * The audience the user may keep. An entry the policy has no rules for —
+     * not a client, or a client whose login never runs the policy — stays.
      */
-    static Stream<String> admitted(List<String> targets, Subject subject,
+    static List<String> kept(List<String> audience, Subject subject,
             Function<String, Optional<Policy>> policyFor, String username) {
-        return targets.stream().filter(clientId -> policyFor.apply(clientId)
+        return audience.stream().filter(entry -> policyFor.apply(entry)
                 .map(policy -> {
-                    Decision decision = LoginPolicy.decide(policy, subject, clientId);
-                    log.debugf("%s %s audience %s: %s", username,
-                            decision.allowed() ? "gets" : "does not get", clientId, decision.reason());
+                    Decision decision = LoginPolicy.decide(policy, subject, entry);
+                    if (!decision.allowed()) {
+                        log.debugf("removing %s from the audience of %s: %s", entry, username, decision.reason());
+                    }
                     return decision.allowed();
                 })
-                .orElse(false));
+                .orElse(true))
+                .toList();
     }
 
     private static Optional<Policy> policyFor(RealmModel realm, String clientId) {
         ClientModel client = realm.getClientByClientId(clientId);
-        if (client == null) {
-            log.warnf("realm %s has no client %s, leaving it out of the audience", realm.getName(), clientId);
-            return Optional.empty();
-        }
-        if (!client.isEnabled()) {
-            log.debugf("client %s is disabled, leaving it out of the audience", clientId);
-            return Optional.empty();
-        }
-
-        Optional<Policy> policy = FlowPolicy.of(realm, client);
-        if (policy.isEmpty()) {
-            log.warnf("the browser flow of client %s has no enabled Client Login Policy step, "
-                    + "leaving it out of the audience", clientId);
-        }
-        return policy;
+        return client == null ? Optional.empty() : FlowPolicy.of(realm, client);
     }
 }
