@@ -127,10 +127,9 @@ The `Client Login Policy Audience` mapper closes that gap. What goes into `aud` 
 
 Each client is decided with the policy step in its own browser flow, the client's override if it has one. An entry the policy has no rules for stays: one that isn't a client, or a client whose browser flow has no enabled policy step. A broken document removes every client that isn't exempt, the same as at login.
 
-1. Create a client scope, for example `client-login-policy`, with the protocol `OpenID Connect` and **Include in token scope** off, so its name stays out of the `scope` claim.
-2. Add a mapper to it by configuration, `Client Login Policy Audience`.
-3. Assign the scope as a default scope to every client whose tokens reach a resource server. Realm-wide default client scopes are only given to clients created afterwards, so assign it to existing clients by hand, and check that no client loses it later.
-4. Have each resource server check that `aud` holds its client id, and reject the token otherwise.
+1. Open the built-in `roles` client scope, which every client gets as a default scope, and add a mapper to it by configuration, `Client Login Policy Audience`. Its name already stays out of the `scope` claim.
+2. If a client lacks `roles`, use another default scope that every client has, or create one with **Include in token scope** off. Realm-wide default client scopes are only given to clients created afterwards, so a new scope has to be assigned to existing clients by hand.
+3. Have each resource server check that `aud` holds its client id, and reject the token otherwise.
 
 ## Development
 
