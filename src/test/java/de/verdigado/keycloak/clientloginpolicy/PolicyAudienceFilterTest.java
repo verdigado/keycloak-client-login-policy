@@ -1,6 +1,7 @@
 package de.verdigado.keycloak.clientloginpolicy;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.util.List;
 import java.util.Map;
@@ -10,6 +11,7 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
+import org.keycloak.representations.AccessToken;
 
 class PolicyAudienceFilterTest {
 
@@ -58,7 +60,12 @@ class PolicyAudienceFilterTest {
 
     private static List<String> kept(Subject subject, Function<String, Optional<Policy>> policyFor,
             String... audience) {
-        return PolicyAudienceFilter.kept(List.of(audience), subject, policyFor, "someone");
+        return Stream.of(audience).filter(PolicyAudienceFilter.mayKeep(subject, policyFor, "someone")).toList();
+    }
+
+    private static AccessToken filtered(Subject subject, AccessToken token) {
+        PolicyAudienceFilter.filter(token, PolicyAudienceFilter.mayKeep(subject, EVERY_CLIENT_NO_GUESTS, "someone"));
+        return token;
     }
 
     @Test
@@ -119,5 +126,45 @@ class PolicyAudienceFilterTest {
     @Test
     void keepsTheOrderOfWhatStays() {
         assertEquals(List.of("a", "b", "c"), kept(MEMBER, EVERY_CLIENT_NO_GUESTS, "a", "b", "c"));
+    }
+
+    @Test
+    void removesTheClientRolesOfAClientThePolicyKeepsTheUserOutOf() {
+        AccessToken token = new AccessToken();
+        token.addAccess("wolke").addRole("user");
+        token.addAccess("account").addRole("manage-account");
+
+        assertEquals(Set.of("account"), filtered(GUEST, token).getResourceAccess().keySet());
+    }
+
+    @Test
+    void decidesClientRolesEvenWithoutAnAudience() {
+        AccessToken token = new AccessToken();
+        token.addAccess("wolke").addRole("user");
+
+        AccessToken result = filtered(GUEST, token);
+
+        assertNull(result.getAudience());
+        assertEquals(Set.of(), result.getResourceAccess().keySet());
+    }
+
+    @Test
+    void dropsTheAudienceWhenNothingIsLeft() {
+        AccessToken token = new AccessToken();
+        token.audience("wolke", "drupal");
+
+        assertNull(filtered(GUEST, token).getAudience());
+    }
+
+    @Test
+    void leavesWhatTheUserMayKeepAlone() {
+        AccessToken token = new AccessToken();
+        token.audience("wolke");
+        token.addAccess("wolke").addRole("user");
+
+        AccessToken result = filtered(MEMBER, token);
+
+        assertEquals(List.of("wolke"), List.of(result.getAudience()));
+        assertEquals(Set.of("user"), result.getResourceAccess("wolke").getRoles());
     }
 }

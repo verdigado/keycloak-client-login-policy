@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import org.jboss.logging.Logger;
 import org.keycloak.models.ClientModel;
@@ -11,6 +12,7 @@ import org.keycloak.models.ClientSessionContext;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.ProtocolMapperModel;
 import org.keycloak.models.RealmModel;
+import org.keycloak.models.UserModel;
 import org.keycloak.models.UserSessionModel;
 import org.keycloak.protocol.oidc.mappers.AbstractOIDCProtocolMapper;
 import org.keycloak.protocol.oidc.mappers.OIDCAccessTokenMapper;
@@ -19,11 +21,12 @@ import org.keycloak.provider.ProviderConfigProperty;
 import org.keycloak.representations.AccessToken;
 
 /**
- * Removes every client from the token's audience that the policy would not let
- * the user log in to, so a service that only receives tokens can rely on
- * {@code aud}. Other mappers decide what goes into the audience; this one runs
- * after all of them and only takes away. Mappers run whenever a token is
- * issued, so the answer is as fresh as the token.
+ * Removes every client from the token's audience and client roles that the
+ * policy would not let the user log in to, so a service that only receives
+ * tokens can rely on {@code aud} and {@code resource_access}. Other mappers
+ * decide what goes into the token; this one runs after all of them and only
+ * takes away. Mappers run whenever a token is issued, so the answer is as
+ * fresh as the token.
  */
 public class PolicyAudienceFilter extends AbstractOIDCProtocolMapper
         implements OIDCAccessTokenMapper, TokenIntrospectionTokenMapper {
@@ -49,8 +52,8 @@ public class PolicyAudienceFilter extends AbstractOIDCProtocolMapper
 
     @Override
     public String getHelpText() {
-        return "Removes each client from the audience (aud) that the client login policy would not let the user "
-                + "log in to. Runs after every other mapper.";
+        return "Removes each client from the audience (aud) and the client roles (resource_access) that the "
+                + "client login policy would not let the user log in to. Runs after every other mapper.";
     }
 
     /**
@@ -83,35 +86,41 @@ public class PolicyAudienceFilter extends AbstractOIDCProtocolMapper
     }
 
     private static void filter(AccessToken token, UserSessionModel userSession) {
-        String[] audience = token.getAudience();
-        if (audience == null || audience.length == 0) {
-            return;
-        }
-
         RealmModel realm = userSession.getRealm();
-        Subject subject = new KeycloakSubject(realm, userSession.getUser());
-        List<String> kept = kept(Arrays.asList(audience), subject, clientId -> policyFor(realm, clientId),
-                userSession.getUser().getUsername());
-
-        token.audience(kept.isEmpty() ? null : kept.toArray(String[]::new));
+        UserModel user = userSession.getUser();
+        filter(token, mayKeep(new KeycloakSubject(realm, user), clientId -> policyFor(realm, clientId),
+                user.getUsername()));
     }
 
     /**
-     * The audience the user may keep. An entry the policy has no rules for —
-     * not a client, or a client whose login never runs the policy — stays.
+     * Takes each client the user may not keep out of both the audience and the
+     * client roles, since a service may go by either.
      */
-    static List<String> kept(List<String> audience, Subject subject,
-            Function<String, Optional<Policy>> policyFor, String username) {
-        return audience.stream().filter(entry -> policyFor.apply(entry)
+    static void filter(AccessToken token, Predicate<String> mayKeep) {
+        String[] audience = token.getAudience();
+        if (audience != null) {
+            List<String> kept = Arrays.stream(audience).filter(mayKeep).toList();
+            token.audience(kept.isEmpty() ? null : kept.toArray(String[]::new));
+        }
+        token.getResourceAccess().keySet().removeIf(mayKeep.negate());
+    }
+
+    /**
+     * Whether the user may keep a client in the token. An entry the policy has
+     * no rules for — not a client, or a client whose login never runs the
+     * policy — stays.
+     */
+    static Predicate<String> mayKeep(Subject subject, Function<String, Optional<Policy>> policyFor,
+            String username) {
+        return entry -> policyFor.apply(entry)
                 .map(policy -> {
                     Decision decision = LoginPolicy.decide(policy, subject, entry);
                     if (!decision.allowed()) {
-                        log.debugf("removing %s from the audience of %s: %s", entry, username, decision.reason());
+                        log.debugf("removing %s from the token of %s: %s", entry, username, decision.reason());
                     }
                     return decision.allowed();
                 })
-                .orElse(true))
-                .toList();
+                .orElse(true);
     }
 
     private static Optional<Policy> policyFor(RealmModel realm, String clientId) {
