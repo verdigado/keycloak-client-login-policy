@@ -38,6 +38,18 @@
       ],
       "webOrigins": [
         "*"
+      ],
+      "protocolMappers": [
+        {
+          "name": "restricted-app audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "client-login-policy-audience",
+          "config": {
+            "targets": "restricted-app",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
       ]
     },
     {
