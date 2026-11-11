@@ -1,6 +1,5 @@
 package de.verdigado.keycloak.clientloginpolicy;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -15,10 +14,9 @@ import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserSessionModel;
 import org.keycloak.protocol.oidc.mappers.AbstractOIDCProtocolMapper;
 import org.keycloak.protocol.oidc.mappers.OIDCAccessTokenMapper;
-import org.keycloak.protocol.oidc.mappers.OIDCAttributeMapperHelper;
 import org.keycloak.protocol.oidc.mappers.TokenIntrospectionTokenMapper;
 import org.keycloak.provider.ProviderConfigProperty;
-import org.keycloak.representations.IDToken;
+import org.keycloak.representations.AccessToken;
 
 /**
  * Removes every client from the token's audience that the policy would not let
@@ -33,12 +31,6 @@ public class PolicyAudienceMapper extends AbstractOIDCProtocolMapper
     private static final Logger log = Logger.getLogger(PolicyAudienceMapper.class);
 
     public static final String PROVIDER_ID = "client-login-policy-audience";
-
-    private static final List<ProviderConfigProperty> CONFIG_PROPERTIES = new ArrayList<>();
-
-    static {
-        OIDCAttributeMapperHelper.addIncludeInTokensConfig(CONFIG_PROPERTIES, PolicyAudienceMapper.class);
-    }
 
     @Override
     public String getId() {
@@ -61,9 +53,13 @@ public class PolicyAudienceMapper extends AbstractOIDCProtocolMapper
                 + "log in to. Runs after every other mapper.";
     }
 
+    /**
+     * No settings, not even Keycloak's usual switches for which tokens a mapper
+     * applies to: turning one off would quietly switch the filter off.
+     */
     @Override
     public List<ProviderConfigProperty> getConfigProperties() {
-        return CONFIG_PROPERTIES;
+        return List.of();
     }
 
     /** Last, so the audience is complete before it is filtered. */
@@ -73,8 +69,20 @@ public class PolicyAudienceMapper extends AbstractOIDCProtocolMapper
     }
 
     @Override
-    protected void setClaim(IDToken token, ProtocolMapperModel mappingModel, UserSessionModel userSession,
-            KeycloakSession session, ClientSessionContext clientSessionCtx) {
+    public AccessToken transformAccessToken(AccessToken token, ProtocolMapperModel mappingModel,
+            KeycloakSession session, UserSessionModel userSession, ClientSessionContext clientSessionCtx) {
+        filter(token, userSession);
+        return token;
+    }
+
+    @Override
+    public AccessToken transformIntrospectionToken(AccessToken token, ProtocolMapperModel mappingModel,
+            KeycloakSession session, UserSessionModel userSession, ClientSessionContext clientSessionCtx) {
+        filter(token, userSession);
+        return token;
+    }
+
+    private static void filter(AccessToken token, UserSessionModel userSession) {
         String[] audience = token.getAudience();
         if (audience == null || audience.length == 0) {
             return;

@@ -55,10 +55,7 @@
           "name": "client login policy audience",
           "protocol": "openid-connect",
           "protocolMapper": "client-login-policy-audience",
-          "config": {
-            "access.token.claim": "true",
-            "introspection.token.claim": "true"
-          }
+          "config": {}
         }
       ]
     },

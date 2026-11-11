@@ -72,6 +72,11 @@ class PolicyAudienceMapperTest {
     }
 
     @Test
+    void offersNoSwitchToTurnTheFilterOff() {
+        assertEquals(List.of(), new PolicyAudienceMapper().getConfigProperties());
+    }
+
+    @Test
     void removesAClientThePolicyKeepsTheUserOutOf() {
         assertEquals(List.of("wolke"), kept(MEMBER, EVERY_CLIENT_NO_GUESTS, "wolke"));
         assertEquals(List.of(), kept(GUEST, EVERY_CLIENT_NO_GUESTS, "wolke"));
